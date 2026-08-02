@@ -1,10 +1,10 @@
-import { DeleteButton } from '../../../components/SubmitButton';
+import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
 import { requireUser } from '../../../lib/supabase-server';
-import { timeAgo } from '../../../lib/utils';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import Link from 'next/link';
+import { timeAgo } from '../../../lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,7 +63,7 @@ export default async function CarsListPage() {
                     <td>
                       <form action={deleteCar}>
                         <input type="hidden" name="id" value={car.id} />
-                        <DeleteButton title="מחיקת רכב" />
+                        <DeleteButton title="מחיקה" />
                       </form>
                     </td>
                   </tr>

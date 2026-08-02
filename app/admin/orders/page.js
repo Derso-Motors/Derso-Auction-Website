@@ -1,9 +1,9 @@
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
 import { requireUser } from '../../../lib/supabase-server';
-import { timeAgo } from '../../../lib/utils';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { timeAgo } from '../../../lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,14 +23,12 @@ async function updateOrderStatus(formData) {
   const { supabase, user } = await requireUser();
   const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (p?.role !== 'admin') redirect('/');
-
   const status = formData.get('status');
   if (!ALLOWED_STATUSES.includes(status)) return;
   const patch = { status };
-
   const fileUrl = formData.get('file_url');
   if (fileUrl) {
-    if (!fileUrl.startsWith('https://')) return; // only real https links, no javascript: etc.
+    if (!fileUrl.startsWith('https://')) return;
     patch.file_url = fileUrl;
   }
   await supabase.from('report_orders').update(patch).eq('id', formData.get('order_id'));
@@ -47,7 +45,7 @@ export default async function OrdersListPage() {
     .select('*, profiles(full_name)')
     .order('created_at', { ascending: false });
 
-  const statusLabel = { pending: 'ממתין', awaiting_payment: 'ממתין לתשלום', paid: 'שולם', delivered: 'נמסר', cancelled: 'בוטל' };
+  const statusLabel = { awaiting_payment: 'ממתין לתשלום', paid: 'שולם', delivered: 'נמסר', cancelled: 'בוטל' };
 
   return (
     <Shell active="admin">
@@ -76,14 +74,14 @@ export default async function OrdersListPage() {
                           <option value="delivered">נמסר</option>
                           <option value="cancelled">בוטל</option>
                         </select>
-                        <input name="file_url" placeholder="קישור קובץ (https://)" dir="ltr" style={{ width: 160 }} />
+                        <input name="file_url" placeholder="קובץ דוח" dir="ltr" style={{ width: 140 }} />
                         <SubmitButton className="btn small secondary">עדכון</SubmitButton>
                       </form>
                     </td>
                     <td>
                       <form action={deleteOrder}>
                         <input type="hidden" name="id" value={o.id} />
-                        <DeleteButton title="מחיקת הזמנה" />
+                        <DeleteButton title="מחיקה" />
                       </form>
                     </td>
                   </tr>

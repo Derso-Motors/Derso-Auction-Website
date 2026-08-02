@@ -1,7 +1,6 @@
-import Shell from '../../components/Shell';
 import { SubmitButton } from '../../components/SubmitButton';
-import { PaymentButton } from '../../components/PaymentPopup';
-import { createClient, requireUser } from '../../lib/supabase-server';
+import Shell from '../../components/Shell';
+import { requireUser } from '../../lib/supabase-server';
 import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
@@ -23,12 +22,9 @@ async function orderReport(formData) {
   const canUseCredits = useCredits && Number(profile?.credits || 0) >= type.price;
 
   if (canUseCredits) {
-    // Spend credits FIRST; only create a paid order if the debit succeeded
     const { error: spendErr } = await supabase.rpc('spend_credits', { p_amount: type.price, p_reason: `תשלום עבור ${type.label}` });
-    if (spendErr) {
-      revalidatePath('/reports');
-      return;
-    }
+    if (spendErr) return;
+
     const { error: insertErr } = await supabase.from('report_orders').insert({
       client_id: user.id,
       report_type: type.label,
@@ -37,11 +33,9 @@ async function orderReport(formData) {
       paid_with_credits: true,
       status: 'paid',
     });
+
     if (insertErr) {
-      // Refund the debit so the client isn't charged for a lost order
-      const { data: p2 } = await supabase.from('profiles').select('credits').eq('id', user.id).single();
-      await supabase.from('profiles').update({ credits: Number(p2?.credits || 0) + type.price }).eq('id', user.id);
-      await supabase.from('credit_transactions').insert({ client_id: user.id, amount: type.price, reason: `החזר — הזמנה נכשלה (${type.label})` });
+      await supabase.rpc('spend_credits', { p_amount: -type.price, p_reason: `החזר — שגיאה בהזמנת ${type.label}` });
     }
   } else {
     await supabase.from('report_orders').insert({
@@ -53,6 +47,7 @@ async function orderReport(formData) {
       status: 'awaiting_payment',
     });
   }
+
   revalidatePath('/reports');
 }
 
@@ -96,9 +91,9 @@ export default async function ReportsPage() {
                 לשלם מיתרת הקרדיטים (₪{Number(profile?.credits || 0).toLocaleString()} זמין)
               </label>
             </div>
-            <SubmitButton className="btn">הזמנת דוח</SubmitButton>
+            <SubmitButton className="btn" style={{ width: '100%' }}>הזמנת דוח</SubmitButton>
             <div className="muted" style={{ marginTop: 10 }}>
-              הזמנה ללא קרדיטים תקבל סטטוס "ממתין לתשלום" — ניתן לשלם דרך כפתור התשלום בטבלת ההזמנות.
+              הזמנה ללא קרדיטים תקבל סטטוס "ממתין לתשלום" — ניצור קשר עם פרטי סליקה מאובטחים.
             </div>
           </form>
         </div>
@@ -106,21 +101,19 @@ export default async function ReportsPage() {
         <div className="card">
           <h3>יתרת קרדיטים — ₪{Number(profile?.credits || 0).toLocaleString()}</h3>
           {!txns?.length && <div className="empty">אין תנועות קרדיט</div>}
-          <div className="table-wrap">
-            <table className="data">
-              <tbody>
-                {txns?.map((t) => (
-                  <tr key={t.id}>
-                    <td>{t.reason}</td>
-                    <td style={{ color: t.amount >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {t.amount >= 0 ? '+' : ''}₪{Number(t.amount).toLocaleString()}
-                    </td>
-                    <td className="muted" style={{ whiteSpace: 'nowrap' }}>{new Date(t.created_at).toLocaleDateString('he-IL')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <table className="data">
+            <tbody>
+              {txns?.map((t) => (
+                <tr key={t.id}>
+                  <td>{t.reason}</td>
+                  <td style={{ color: t.amount >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {t.amount >= 0 ? '+' : ''}₪{Number(t.amount).toLocaleString()}
+                  </td>
+                  <td className="muted" style={{ whiteSpace: 'nowrap' }}>{new Date(t.created_at).toLocaleDateString('he-IL')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -139,14 +132,9 @@ export default async function ReportsPage() {
                     <td>{o.report_type}</td>
                     <td dir="ltr">{o.license_plate || '—'}</td>
                     <td>₪{Number(o.amount).toLocaleString()}{o.paid_with_credits ? ' (קרדיטים)' : ''}</td>
-                    <td><span className={`badge ${o.status}`}>{statusLabel[o.status] || o.status}</span></td>
+                    <td><span className={`badge ${o.status}`}>{statusLabel[o.status]}</span></td>
                     <td className="muted">{new Date(o.created_at).toLocaleDateString('he-IL')}</td>
-                    <td>
-                      {o.status === 'awaiting_payment' && <PaymentButton order={o} />}
-                      {o.file_url && o.file_url.startsWith('https://') && (
-                        <a href={o.file_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>הורדת דוח</a>
-                      )}
-                    </td>
+                    <td>{o.file_url && <a href={o.file_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>הורדת דוח</a>}</td>
                   </tr>
                 ))}
               </tbody>

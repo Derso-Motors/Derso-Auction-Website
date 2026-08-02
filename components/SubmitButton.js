@@ -24,6 +24,9 @@ export function DeleteButton({ title }) {
       type="submit"
       title={title}
       disabled={pending}
+      onClick={(e) => {
+        if (!window.confirm('בטוח למחוק?')) e.preventDefault();
+      }}
     >
       {pending ? '·' : '✕'}
     </button>
