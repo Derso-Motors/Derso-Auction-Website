@@ -47,6 +47,7 @@ export default function Shell({ children, active }) {
             <Link href="/admin/calendar" className={`nav-item ${active === 'calendar' ? 'active' : ''}`}>יומן פגישות</Link>
             <Link href="/admin/recommendations" className={`nav-item ${active === 'recommendations' ? 'active' : ''}`}>המלצות</Link>
             <Link href="/admin/messages" className={`nav-item ${active === 'messages' && isAdmin ? 'active' : ''}`}>הודעות לקוחות</Link>
+            <Link href="/admin/auctions" className={`nav-item ${active === 'auctions' ? 'active' : ''}`}>מעקב מכרזים</Link>
             <Link href="/admin/marketplace" className={`nav-item ${active === 'marketplace' ? 'active' : ''}`}>העלאה למכירה</Link>
           </>
         )}

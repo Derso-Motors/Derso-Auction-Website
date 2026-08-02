@@ -15,12 +15,13 @@ async function requireAdmin() {
 export default async function AdminPage() {
   const supabase = await requireAdmin();
 
-  const [{ count: clientCount }, { count: carCount }, { count: orderCount }, { count: meetingCount }, { count: listCount }, { data: unread }] = await Promise.all([
+  const [{ count: clientCount }, { count: carCount }, { count: orderCount }, { count: meetingCount }, { count: listCount }, { count: auctionCount }, { data: unread }] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'client'),
     supabase.from('cars').select('*', { count: 'exact', head: true }),
     supabase.from('report_orders').select('*', { count: 'exact', head: true }),
     supabase.from('meetings').select('*', { count: 'exact', head: true }).gte('scheduled_at', new Date().toISOString()),
     supabase.from('recommendation_lists').select('*', { count: 'exact', head: true }),
+    supabase.from('auctions').select('*', { count: 'exact', head: true }).in('status', ['submitted', 'under_review', 'pending_release']),
     supabase.from('messages').select('id, client_id, body, created_at, profiles(full_name)').eq('sender_role', 'client').eq('read', false).order('created_at', { ascending: false }).limit(5),
   ]);
 
@@ -31,6 +32,7 @@ export default async function AdminPage() {
     { href: '/admin/calendar', icon: '📅', label: 'יומן פגישות', desc: 'קביעה וניהול פגישות', count: meetingCount },
     { href: '/admin/recommendations', icon: '⭐', label: 'המלצות', desc: 'רשימות המלצות לשיחות איפיון', count: listCount },
     { href: '/admin/messages', icon: '💬', label: 'הודעות', desc: 'הודעות מלקוחות', count: unread?.length || 0 },
+    { href: '/admin/auctions', icon: '⚖️', label: 'מעקב מכרזים', desc: 'הצעות, זכיות והיסטוריית מכרזים', count: auctionCount },
     { href: '/admin/marketplace', icon: '🏪', label: 'העלאה למכירה', desc: 'BidSpirit → Facebook Marketplace' },
   ];
 
