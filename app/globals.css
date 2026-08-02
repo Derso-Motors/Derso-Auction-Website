@@ -238,3 +238,77 @@ label { display: block; font-size: 11.5px; font-weight: 600; margin-bottom: 5px;
   font-size: 12px; flex-shrink: 0; transition: background 0.12s;
 }
 .btn-icon-delete:hover { background: var(--danger-bg); }
+
+/* Payment Popup */
+.popup-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.popup-box {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 0.5rem;
+  width: 420px; max-width: 92vw; overflow: hidden;
+}
+.popup-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 22px; border-bottom: 1px solid var(--border); background: var(--surface-low);
+}
+.popup-close {
+  background: none; border: none; color: var(--muted-dim); font-size: 22px; cursor: pointer; line-height: 1;
+}
+.popup-close:hover { color: var(--danger); }
+.popup-body { padding: 22px; }
+.popup-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid rgba(68,71,77,0.3);
+}
+.popup-row:last-child { border-bottom: none; }
+.popup-label { color: var(--muted-dim); font-size: 13px; font-weight: 600; }
+.popup-actions {
+  display: flex; gap: 10px; justify-content: flex-end; padding: 16px 22px;
+  border-top: 1px solid var(--border); background: var(--surface-low);
+}
+
+/* Notification Bell */
+.notif-bell {
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; transition: background 0.12s, border-color 0.12s;
+}
+.notif-bell:hover { background: var(--surface-high); border-color: var(--primary); color: var(--primary); }
+.notif-badge {
+  position: absolute; top: -4px; right: -4px;
+  background: var(--danger); color: #fff; font-size: 10px; font-weight: 700;
+  min-width: 18px; height: 18px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px; border: 2px solid var(--surface-low);
+}
+.notif-dropdown {
+  position: absolute; bottom: 44px; right: 0; width: 300px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 100; max-height: 320px; overflow-y: auto;
+}
+.notif-title {
+  font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted); padding: 14px 16px; border-bottom: 1px solid var(--border);
+}
+.notif-item {
+  padding: 12px 16px; border-bottom: 1px solid rgba(68,71,77,0.3);
+  transition: background 0.12s;
+}
+.notif-item:hover { background: var(--surface-high); }
+.notif-item:last-child { border-bottom: none; }
+
+/* Side card items - prevent overlap */
+.side-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.side-item:last-child { border-bottom: none; }
+.side-item-content { flex: 1; min-width: 0; }
+.side-item-actions { flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+.side-item-time {
+  font-weight: 700; font-size: 14px; font-family: 'JetBrains Mono', monospace;
+  color: var(--primary); white-space: nowrap;
+}

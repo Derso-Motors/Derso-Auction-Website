@@ -1,51 +1,55 @@
+'use client';
 import Link from 'next/link';
-import { createClient, requireUser } from '../lib/supabase-server';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { createClient } from '../lib/supabase-client';
+import { useEffect, useState } from 'react';
+import NotificationBell from './NotificationBell';
 
-async function signOut() {
-  'use server';
-  const supabase = createClient();
-  await supabase.auth.signOut();
-  redirect('/login');
-}
+export default function Shell({ children, active }) {
+  const router = useRouter();
+  const [role, setRole] = useState(null);
 
-export default async function Shell({ children, active }) {
-  const { supabase, user } = await requireUser();
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-  const isAdmin = profile?.role === 'admin';
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from('profiles').select('role').eq('id', user.id).single()
+        .then(({ data }) => setRole(data?.role));
+    });
+  }, []);
 
-  const items = isAdmin
-    ? [
-        { href: '/', key: 'home', label: 'ראשי' },
-        { href: '/admin/messages', key: 'messages', label: 'הודעות' },
-        { href: '/admin', key: 'admin', label: 'ניהול' },
-      ]
-    : [
-        { href: '/', key: 'home', label: 'ראשי' },
-        { href: '/reports', key: 'reports', label: 'דוחות ותשלומים' },
-        { href: '/messages', key: 'messages', label: 'שאלות ופניות' },
-      ];
+  const handleSignOut = async () => {
+    if (!window.confirm('האם להתנתק?')) return;
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
+
+  const isAdmin = role === 'admin';
 
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <nav className="sidebar">
         <div className="brand">
-          דרסו — ליווי למכרזים
-          <span>אזור לקוחות</span>
+          דרסו
+          <span>ליווי למכרזים</span>
         </div>
-        {items.map((it) => (
-          <Link key={it.key} href={it.href} className={`nav-item ${active === it.key ? 'active' : ''}`}>
-            {it.label}
-          </Link>
-        ))}
+        <Link href="/" className={`nav-item ${active === 'home' ? 'active' : ''}`}>דף הבית</Link>
+        <Link href="/messages" className={`nav-item ${active === 'messages' ? 'active' : ''}`}>הודעות</Link>
+        <Link href="/reports" className={`nav-item ${active === 'reports' ? 'active' : ''}`}>דוחות וקרדיטים</Link>
+        {isAdmin && (
+          <>
+            <div style={{ height: 10 }} />
+            <Link href="/admin" className={`nav-item ${active === 'admin' ? 'active' : ''}`}>ניהול</Link>
+            <Link href="/admin/messages" className={`nav-item ${active === 'admin-messages' ? 'active' : ''}`}>הודעות לקוחות</Link>
+          </>
+        )}
         <div className="spacer" />
-        <div className="nav-item" style={{ borderRight: 'none', cursor: 'default' }}>
-          {profile?.full_name || user.email}
+        <div style={{ padding: '8px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <NotificationBell />
+          <button onClick={handleSignOut} className="signout" style={{ width: 'auto', padding: '8px 0' }}>התנתקות</button>
         </div>
-        <form action={signOut}>
-          <button className="signout" type="submit">התנתקות</button>
-        </form>
-      </aside>
+      </nav>
       <main className="main">{children}</main>
     </div>
   );
