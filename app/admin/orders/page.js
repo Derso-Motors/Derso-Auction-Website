@@ -48,7 +48,7 @@ export default async function OrdersListPage() {
   const statusLabel = { awaiting_payment: 'ממתין לתשלום', paid: 'שולם', delivered: 'נמסר', cancelled: 'בוטל' };
 
   return (
-    <Shell active="admin">
+    <Shell active="orders">
       <div className="page-title">כל הזמנות הדוחות</div>
       <div className="page-sub">היסטוריית הזמנות דוחות מלאה</div>
       <div className="card">

@@ -40,7 +40,7 @@ export default async function AdminMessagesPage() {
   });
 
   return (
-    <Shell active="admin">
+    <Shell active="messages">
       <div className="page-title">הודעות</div>
       <div className="page-sub">צ׳אט עם לקוחות — סגנון מסנג׳ר</div>
       <Messenger conversations={conversations} />

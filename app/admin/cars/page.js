@@ -10,11 +10,58 @@ export const dynamic = 'force-dynamic';
 
 const STAGES = ['זכייה במכרז', 'תשלום למכרז', 'שחרור הרכב', 'העברת בעלות', 'שינוע הרכב', 'מסירה ללקוח'];
 
-async function deleteCar(formData) {
-  'use server';
+async function requireAdmin() {
   const { supabase, user } = await requireUser();
   const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (p?.role !== 'admin') redirect('/');
+  return supabase;
+}
+
+async function addCar(formData) {
+  'use server';
+  const supabase = await requireAdmin();
+  const clientId = formData.get('client_id');
+  await supabase.from('cars').insert({
+    client_id: clientId === '__walk_in__' ? null : clientId,
+    client_name: clientId === '__walk_in__' ? (formData.get('client_name') || 'לקוח חד-פעמי') : null,
+    client_phone: clientId === '__walk_in__' ? (formData.get('client_phone') || null) : null,
+    title: formData.get('title'),
+    year: formData.get('year') ? Number(formData.get('year')) : null,
+    km: formData.get('km') ? Number(formData.get('km')) : null,
+    license_plate: formData.get('license_plate') || null,
+    auction_link: formData.get('auction_link') || null,
+    image_url: formData.get('image_url') || null,
+    won_price: formData.get('won_price') ? Number(formData.get('won_price')) : null,
+  });
+  revalidatePath('/admin/cars');
+}
+
+async function advanceStage(formData) {
+  'use server';
+  const supabase = await requireAdmin();
+  const carId = formData.get('car_id');
+  const step = Number(formData.get('step_number'));
+  const note = formData.get('note');
+  await supabase.from('car_stages').update({ status: 'done', completed_at: new Date().toISOString() }).eq('car_id', carId).lte('step_number', step);
+  await supabase.from('car_stages').update({ status: 'in_progress' }).eq('car_id', carId).eq('step_number', step + 1);
+  await supabase.from('cars').update({ current_stage: step + 1 }).eq('id', carId);
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: stage } = await supabase.from('car_stages').select('title').eq('car_id', carId).eq('step_number', step).single();
+  await supabase.from('car_updates').insert({ car_id: carId, author_id: user.id, stage_number: step, body: note?.trim() ? note.trim() : `השלב "${stage?.title}" הושלם` });
+  revalidatePath('/admin/cars');
+}
+
+async function postUpdate(formData) {
+  'use server';
+  const supabase = await requireAdmin();
+  const { data: { user } } = await supabase.auth.getUser();
+  await supabase.from('car_updates').insert({ car_id: formData.get('car_id'), author_id: user.id, body: formData.get('body') });
+  revalidatePath('/admin/cars');
+}
+
+async function deleteCar(formData) {
+  'use server';
+  const supabase = await requireAdmin();
   const id = formData.get('id');
   await supabase.from('car_updates').delete().eq('car_id', id);
   await supabase.from('car_stages').delete().eq('car_id', id);
@@ -22,55 +69,86 @@ async function deleteCar(formData) {
   revalidatePath('/admin/cars');
 }
 
-export default async function CarsListPage() {
-  const { supabase, user } = await requireUser();
-  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (me?.role !== 'admin') redirect('/');
+export default async function CarsPage() {
+  const supabase = await requireAdmin();
 
-  const { data: cars } = await supabase
-    .from('cars')
-    .select('*, car_stages(*), profiles(full_name), client_name, client_phone')
-    .order('created_at', { ascending: false });
+  const [{ data: cars }, { data: clients }] = await Promise.all([
+    supabase.from('cars').select('*, car_stages(*), profiles(full_name), client_name, client_phone').order('created_at', { ascending: false }),
+    supabase.from('profiles').select('id, full_name, role').eq('role', 'client').order('full_name'),
+  ]);
+
+  const clientOptions = clients || [];
 
   return (
-    <Shell active="admin">
-      <div className="page-title">כל הרכבים</div>
-      <div className="page-sub">רכבים בטיפול ורכבים שהושלמו</div>
-      <div className="card">
-        {!cars?.length && <div className="empty">אין רכבים</div>}
-        <div className="table-wrap">
-          <table className="data">
-            <thead><tr><th>רכב</th><th>לקוח</th><th>שלב נוכחי</th><th>התקדמות</th><th>נוצר</th><th></th><th></th></tr></thead>
-            <tbody>
-              {cars?.map((car) => {
-                const stages = (car.car_stages || []).sort((a, b) => a.step_number - b.step_number);
-                const done = stages.filter((s) => s.status === 'done').length;
-                const current = stages.find((s) => s.status === 'in_progress');
-                const clientLabel = car.profiles?.full_name || car.client_name || 'ללא לקוח';
-                return (
-                  <tr key={car.id}>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{car.title}</div>
-                      <div className="muted" style={{ fontSize: 11.5 }}>
-                        {car.year ? `${car.year}` : ''}{car.license_plate ? ` · ${car.license_plate}` : ''}
-                      </div>
-                    </td>
-                    <td>{clientLabel}{car.client_phone ? <span className="muted"> ({car.client_phone})</span> : ''}</td>
-                    <td><span className={`badge ${done >= 6 ? 'done' : 'in_progress'}`}>{done >= 6 ? 'הושלם' : current ? current.title : STAGES[done] || 'בתהליך'}</span></td>
-                    <td>{done}/6</td>
-                    <td className="muted">{timeAgo(car.created_at)}</td>
-                    <td><Link href={`/cars/${car.id}`} style={{ color: 'var(--accent)', fontSize: 12.5 }}>צפייה</Link></td>
-                    <td>
+    <Shell active="cars">
+      <div className="page-title">רכבים</div>
+      <div className="page-sub">ניהול רכבים, שלבים ועדכונים</div>
+
+      <div className="admin-desktop-layout">
+        <div className="admin-col-right">
+          <div className="card">
+            <h3>רכבים בתהליך</h3>
+            {!cars?.length && <div className="empty">אין רכבים</div>}
+            {cars?.map((car) => {
+              const stages = (car.car_stages || []).sort((a, b) => a.step_number - b.step_number);
+              const done = stages.filter((s) => s.status === 'done').length;
+              const nextStep = done < 6 ? done : null;
+              return (
+                <div key={car.id} style={{ padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div className="side-item" style={{ border: 'none', padding: 0 }}>
+                    <div className="side-item-content">
+                      <b>{car.title}</b>
+                      <span className="muted"> — {car.profiles?.full_name || car.client_name || 'ללא לקוח'}{car.client_phone ? ` (${car.client_phone})` : ''}</span>
+                      <div className="muted">{done}/6 שלבים הושלמו {done < 6 ? `· הבא: ${stages[done]?.title}` : '· הושלם'}</div>
+                      {car.won_price && <div className="muted" style={{ fontSize: 12 }}>₪{Number(car.won_price).toLocaleString()}</div>}
+                    </div>
+                    <div className="side-item-actions">
                       <form action={deleteCar}>
                         <input type="hidden" name="id" value={car.id} />
-                        <DeleteButton title="מחיקה" />
+                        <DeleteButton title="מחיקת רכב" />
                       </form>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
+                  </div>
+                  {nextStep !== null && (
+                    <form action={advanceStage} className="row" style={{ marginTop: 8, flexWrap: 'wrap', gap: 6 }}>
+                      <input type="hidden" name="car_id" value={car.id} />
+                      <input type="hidden" name="step_number" value={done} />
+                      <input name="note" placeholder="הערה (אופציונלי)" style={{ width: 160 }} />
+                      <SubmitButton className="btn small">סיום שלב: {stages[done]?.title}</SubmitButton>
+                    </form>
+                  )}
+                  <form action={postUpdate} className="row" style={{ marginTop: 6, gap: 6 }}>
+                    <input type="hidden" name="car_id" value={car.id} />
+                    <input name="body" placeholder="פרסום עדכון חופשי ללקוח..." required style={{ flex: 1 }} />
+                    <SubmitButton className="btn small secondary">פרסום עדכון</SubmitButton>
+                  </form>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="admin-col-left">
+          <div className="card">
+            <h3>הוספת רכב שנזכה</h3>
+            <form action={addCar}>
+              <div className="field"><label>לקוח</label><select name="client_id" required>{clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id}</option>)}<option value="__walk_in__">+ לקוח חד-פעמי</option></select></div>
+              <div className="field"><label>שם לקוח (ללא רשום)</label><input name="client_name" placeholder="שם הלקוח" /></div>
+              <div className="field"><label>טלפון</label><input name="client_phone" placeholder="050-1234567" dir="ltr" /></div>
+              <div className="field"><label>שם הרכב</label><input name="title" required placeholder="סקודה אוקטביה 2021" /></div>
+              <div className="grid cols-2">
+                <div className="field"><label>שנתון</label><input name="year" type="number" /></div>
+                <div className="field"><label>ק"מ</label><input name="km" type="number" /></div>
+              </div>
+              <div className="grid cols-2">
+                <div className="field"><label>מספר רישוי</label><input name="license_plate" dir="ltr" /></div>
+                <div className="field"><label>מחיר זכייה</label><input name="won_price" type="number" /></div>
+              </div>
+              <div className="field"><label>קישור מכרז</label><input name="auction_link" dir="ltr" /></div>
+              <div className="field"><label>קישור תמונה</label><input name="image_url" dir="ltr" /></div>
+              <SubmitButton className="btn">הוספת רכב</SubmitButton>
+            </form>
+          </div>
         </div>
       </div>
     </Shell>

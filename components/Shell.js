@@ -35,13 +35,18 @@ export default function Shell({ children, active }) {
           <span>ליווי למכרזים</span>
         </div>
         <Link href="/" className={`nav-item ${active === 'home' ? 'active' : ''}`}>דף הבית</Link>
-        <Link href="/messages" className={`nav-item ${active === 'messages' ? 'active' : ''}`}>הודעות</Link>
+        <Link href="/messages" className={`nav-item ${active === 'messages' && !isAdmin ? 'active' : ''}`}>הודעות</Link>
         <Link href="/reports" className={`nav-item ${active === 'reports' ? 'active' : ''}`}>דוחות וקרדיטים</Link>
         {isAdmin && (
           <>
             <div style={{ height: 10 }} />
             <Link href="/admin" className={`nav-item ${active === 'admin' ? 'active' : ''}`}>ניהול</Link>
-            <Link href="/admin/messages" className={`nav-item ${active === 'admin-messages' ? 'active' : ''}`}>הודעות לקוחות</Link>
+            <Link href="/admin/cars" className={`nav-item ${active === 'cars' ? 'active' : ''}`}>רכבים</Link>
+            <Link href="/admin/clients" className={`nav-item ${active === 'clients' ? 'active' : ''}`}>לקוחות</Link>
+            <Link href="/admin/orders" className={`nav-item ${active === 'orders' ? 'active' : ''}`}>הזמנות דוחות</Link>
+            <Link href="/admin/calendar" className={`nav-item ${active === 'calendar' ? 'active' : ''}`}>יומן פגישות</Link>
+            <Link href="/admin/recommendations" className={`nav-item ${active === 'recommendations' ? 'active' : ''}`}>המלצות</Link>
+            <Link href="/admin/messages" className={`nav-item ${active === 'messages' && isAdmin ? 'active' : ''}`}>הודעות לקוחות</Link>
             <Link href="/admin/marketplace" className={`nav-item ${active === 'marketplace' ? 'active' : ''}`}>העלאה למכירה</Link>
           </>
         )}
