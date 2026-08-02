@@ -54,7 +54,7 @@ export default async function RecommendationsPage({ params }) {
               )}
             </div>
             {c.image_url && (
-              <img src={c.image_url} alt={c.title} style={{ width: 220, height: 150, objectFit: 'cover', borderRadius: 8 }} />
+              <img src={c.image_url} alt={c.title} style={{ width: 220, maxWidth: '100%', height: 150, objectFit: 'cover', borderRadius: 8 }} />
             )}
           </div>
           <div className="divider" />
