@@ -42,6 +42,7 @@ export default function Shell({ children, active }) {
             <div style={{ height: 10 }} />
             <Link href="/admin" className={`nav-item ${active === 'admin' ? 'active' : ''}`}>ניהול</Link>
             <Link href="/admin/messages" className={`nav-item ${active === 'admin-messages' ? 'active' : ''}`}>הודעות לקוחות</Link>
+            <Link href="/admin/marketplace" className={`nav-item ${active === 'marketplace' ? 'active' : ''}`}>העלאה למכירה</Link>
           </>
         )}
         <div className="spacer" />
