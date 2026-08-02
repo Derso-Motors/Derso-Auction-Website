@@ -6,12 +6,14 @@ export default function NotificationBell() {
   const [count, setCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
     const supabase = createClient();
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setUserId(user.id);
       const { data } = await supabase
         .from('messages')
         .select('id, body, created_at, sender_role')
@@ -37,13 +39,25 @@ export default function NotificationBell() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  const toggleOpen = async () => {
+    const willOpen = !open;
+    setOpen(willOpen);
+    // Opening the dropdown marks everything as read and clears the badge
+    if (willOpen && count > 0 && userId) {
+      setCount(0);
+      const supabase = createClient();
+      await supabase
+        .from('messages')
+        .update({ read: true })
+        .eq('client_id', userId)
+        .eq('sender_role', 'admin')
+        .eq('read', false);
+    }
+  };
+
   return (
     <div style={{ position: 'relative' }}>
-      <button
-        className="notif-bell"
-        onClick={() => setOpen(!open)}
-        aria-label="התראות"
-      >
+      <button className="notif-bell" onClick={toggleOpen} aria-label="התראות">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />

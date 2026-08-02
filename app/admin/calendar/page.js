@@ -1,6 +1,7 @@
 import { DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
 import { requireUser } from '../../../lib/supabase-server';
+import { timeAgo } from '../../../lib/utils';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 
@@ -31,33 +32,36 @@ export default async function MeetingsListPage() {
       <div className="page-sub">יומן פגישות מלא</div>
       <div className="card">
         {!meetings?.length && <div className="empty">אין פגישות</div>}
-        <table className="data">
-          <thead><tr><th>נושא</th><th>לקוח</th><th>תאריך</th><th>שעה</th><th>מיקום</th><th>סטטוס</th><th></th></tr></thead>
-          <tbody>
-            {meetings?.map((m) => {
-              const d = new Date(m.scheduled_at);
-              const isPast = d < new Date();
-              return (
-                <tr key={m.id} style={{ opacity: isPast ? 0.5 : 1 }}>
-                  <td style={{ fontWeight: 600 }}>{m.title}</td>
-                  <td>{m.profiles?.full_name || '—'}</td>
-                  <td>{d.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
-                  <td style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: 'var(--primary)' }}>
-                    {d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td>{m.location || '—'}</td>
-                  <td><span className={`badge ${isPast ? 'done' : 'in_progress'}`}>{isPast ? 'עבר' : 'מתוכנן'}</span></td>
-                  <td>
-                    <form action={deleteMeeting}>
-                      <input type="hidden" name="id" value={m.id} />
-                      <DeleteButton title="מחיקה" />
-                    </form>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="table-wrap">
+          <table className="data">
+            <thead><tr><th>נושא</th><th>לקוח</th><th>תאריך</th><th>שעה</th><th>מתי</th><th>מיקום</th><th>סטטוס</th><th></th></tr></thead>
+            <tbody>
+              {meetings?.map((m) => {
+                const d = new Date(m.scheduled_at);
+                const isPast = d < new Date();
+                return (
+                  <tr key={m.id} style={{ opacity: isPast ? 0.5 : 1 }}>
+                    <td style={{ fontWeight: 600 }}>{m.title}</td>
+                    <td>{m.profiles?.full_name || '—'}</td>
+                    <td>{d.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
+                    <td style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: 'var(--primary)' }}>
+                      {d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="muted">{timeAgo(m.scheduled_at)}</td>
+                    <td>{m.location || '—'}</td>
+                    <td><span className={`badge ${isPast ? 'done' : 'in_progress'}`}>{isPast ? 'עבר' : 'מתוכנן'}</span></td>
+                    <td>
+                      <form action={deleteMeeting}>
+                        <input type="hidden" name="id" value={m.id} />
+                        <DeleteButton title="מחיקה" />
+                      </form>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </Shell>
   );
