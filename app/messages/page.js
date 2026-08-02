@@ -12,6 +12,14 @@ export default async function MessagesPage() {
     .eq('client_id', user.id)
     .order('created_at');
 
+  // Opening the messages page marks admin messages as read (clears the bell)
+  await supabase
+    .from('messages')
+    .update({ read: true })
+    .eq('client_id', user.id)
+    .eq('sender_role', 'admin')
+    .eq('read', false);
+
   return (
     <Shell active="messages">
       <div className="page-title">שאלות ופניות</div>

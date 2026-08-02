@@ -5,6 +5,12 @@ export const metadata = {
   description: 'דרסו ליווי למכרזים — מערכת מעקב רכבים, מכרזים ודוחות ללקוחות',
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#131315',
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="he" dir="rtl">

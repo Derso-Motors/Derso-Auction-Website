@@ -31,7 +31,7 @@ export default function LoginPage() {
           email, password,
           options: { data: { full_name: fullName, phone } },
         });
-        if (error) { setError(error.message); return; }
+        if (error) { setError('לא ניתן להשלים את ההרשמה. בדקו את הפרטים או נסו שוב מאוחר יותר.'); return; }
         setInfo('נשלח אליך מייל אימות. יש לאשר אותו ואז להתחבר.');
         setMode('login');
       }

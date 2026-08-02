@@ -1,19 +1,20 @@
 import Shell from '../../../components/Shell';
-import { createClient } from '../../../lib/supabase-server';
+import { requireUser } from '../../../lib/supabase-server';
 import { notFound } from 'next/navigation';
 import CarLive from './live';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CarPage({ params }) {
-  const supabase = createClient();
-  const { data: car } = await supabase
-    .from('cars')
-    .select('*, car_stages(*), car_updates(*)')
-    .eq('id', params.id)
-    .single();
+  const { supabase, user } = await requireUser();
+  const [{ data: car }, { data: profile }] = await Promise.all([
+    supabase.from('cars').select('*, car_stages(*), car_updates(*)').eq('id', params.id).single(),
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+  ]);
 
   if (!car) notFound();
+  // Only the owning client or an admin may view a car
+  if (profile?.role !== 'admin' && car.client_id !== user.id) notFound();
 
   const stages = (car.car_stages || []).sort((a, b) => a.step_number - b.step_number);
   const updates = (car.car_updates || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
