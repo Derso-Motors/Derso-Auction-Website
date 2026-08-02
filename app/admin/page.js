@@ -106,8 +106,12 @@ async function grantCredits(formData) {
 async function updateOrderStatus(formData) {
   'use server';
   const supabase = await requireAdmin();
-  const patch = { status: formData.get('status') };
-  if (formData.get('file_url')) patch.file_url = formData.get('file_url');
+  const status = formData.get('status');
+  const ALLOWED = ['awaiting_payment', 'paid', 'delivered', 'cancelled'];
+  if (!ALLOWED.includes(status)) return;
+  const patch = { status };
+  const fileUrl = formData.get('file_url');
+  if (fileUrl && fileUrl.startsWith('https://')) patch.file_url = fileUrl;
   await supabase.from('report_orders').update(patch).eq('id', formData.get('order_id'));
   revalidatePath('/admin');
 }
@@ -223,9 +227,9 @@ export default async function AdminPage() {
         </div>
       )}
 
-      <div className="dashboard-layout">
-        <div className="dashboard-main">
-          {/* Cars in process */}
+      <div className="admin-desktop-layout">
+        {/* ===== RIGHT COLUMN: Car management + recommendations ===== */}
+        <div className="admin-col-right">
           <div className="card">
             <h3>רכבים בתהליך</h3>
             {!cars?.length && <div className="empty">אין רכבים</div>}
@@ -266,49 +270,6 @@ export default async function AdminPage() {
             })}
           </div>
 
-          <div className="grid cols-2">
-            <div className="card">
-              <h3>פגישה חדשה</h3>
-              <form action={addMeeting}>
-                <div className="field"><label>לקוח</label><select name="client_id" required>{clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id}</option>)}</select></div>
-                <div className="field"><label>נושא</label><input name="title" required /></div>
-                <div className="field"><label>מועד</label><input name="scheduled_at" type="datetime-local" required /></div>
-                <div className="field"><label>מיקום</label><input name="location" /></div>
-                <SubmitButton className="btn">קביעת פגישה</SubmitButton>
-              </form>
-            </div>
-            <div className="card">
-              <h3>הוספת רכב שנזכה</h3>
-              <form action={addCar}>
-                <div className="field"><label>לקוח</label><select name="client_id" required>{clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id}</option>)}<option value="__walk_in__">+ לקוח חד-פעמי</option></select></div>
-                <div className="field"><label>שם לקוח (ללא רשום)</label><input name="client_name" placeholder="שם הלקוח" /></div>
-                <div className="field"><label>טלפון</label><input name="client_phone" placeholder="050-1234567" dir="ltr" /></div>
-                <div className="field"><label>שם הרכב</label><input name="title" required placeholder="סקודה אוקטביה 2021" /></div>
-                <div className="grid cols-2">
-                  <div className="field"><label>שנתון</label><input name="year" type="number" /></div>
-                  <div className="field"><label>ק"מ</label><input name="km" type="number" /></div>
-                </div>
-                <div className="grid cols-2">
-                  <div className="field"><label>מספר רישוי</label><input name="license_plate" dir="ltr" /></div>
-                  <div className="field"><label>מחיר זכייה</label><input name="won_price" type="number" /></div>
-                </div>
-                <div className="field"><label>קישור מכרז</label><input name="auction_link" dir="ltr" /></div>
-                <div className="field"><label>קישור תמונה</label><input name="image_url" dir="ltr" /></div>
-                <SubmitButton className="btn">הוספת רכב</SubmitButton>
-              </form>
-            </div>
-          </div>
-
-          <div className="card">
-            <h3>זיכוי קרדיטים</h3>
-            <form action={grantCredits} className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
-              <select name="client_id" required style={{ width: 220 }}>{clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id} (₪{Number(c.credits).toLocaleString()})</option>)}</select>
-              <input name="amount" type="number" required placeholder="סכום ₪" style={{ width: 100 }} />
-              <input name="reason" placeholder="סיבה" style={{ width: 160 }} />
-              <SubmitButton className="btn small">זיכוי</SubmitButton>
-            </form>
-          </div>
-
           <div className="card">
             <h3>רשימות המלצות</h3>
             <form action={addRecommendationList} className="row" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 6 }}>
@@ -332,30 +293,10 @@ export default async function AdminPage() {
               </div>
             ))}
           </div>
-
-          <div className="card">
-            <h3>לקוחות</h3>
-            <table className="data">
-              <thead><tr><th>שם</th><th>טלפון</th><th>תפקיד</th><th>קרדיטים</th><th>הצטרפות</th><th></th><th></th></tr></thead>
-              <tbody>
-                {clients?.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.full_name || '—'}</td>
-                    <td dir="ltr">{c.phone || '—'}</td>
-                    <td>{c.role === 'admin' ? 'מנהל' : 'לקוח'}</td>
-                    <td>₪{Number(c.credits).toLocaleString()}</td>
-                    <td className="muted">{new Date(c.created_at).toLocaleDateString('he-IL')}</td>
-                    <td><Link href={`/admin/chat/${c.id}`} style={{ color: 'var(--accent)' }}>צ׳אט</Link></td>
-                    <td>{c.role !== 'admin' && (<form action={deleteClient}><input type="hidden" name="id" value={c.id} /><DeleteButton title="מחיקה" /></form>)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
 
-        {/* ===== SIDEBAR ===== */}
-        <div className="dashboard-side">
+        {/* ===== LEFT COLUMN: Sidebar summaries + forms ===== */}
+        <div className="admin-col-left">
           {/* Meetings */}
           <div className="card">
             <div className="row between" style={{ marginBottom: 12 }}>
@@ -363,7 +304,7 @@ export default async function AdminPage() {
               <Link href="/admin/calendar" className="btn small secondary">הצג הכל ({meetings?.length || 0})</Link>
             </div>
             {!upcomingMeetings.length && <div className="empty">אין פגישות קרובות</div>}
-            {upcomingMeetings.slice(0, 6).map((m) => {
+            {upcomingMeetings.slice(0, 8).map((m) => {
               const d = new Date(m.scheduled_at);
               return (
                 <div key={m.id} className="side-item">
@@ -393,7 +334,7 @@ export default async function AdminPage() {
               <Link href="/admin/orders" className="btn small secondary">הצג הכל ({orders?.length || 0})</Link>
             </div>
             {!orders?.length && <div className="empty">אין הזמנות</div>}
-            {orders?.slice(0, 6).map((o) => (
+            {orders?.slice(0, 8).map((o) => (
               <div key={o.id} className="side-item">
                 <div className="side-item-content">
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{o.report_type}</div>
@@ -410,14 +351,14 @@ export default async function AdminPage() {
             ))}
           </div>
 
-          {/* Active cars sidebar */}
+          {/* Active cars summary */}
           <div className="card">
             <div className="row between" style={{ marginBottom: 12 }}>
               <h3 style={{ margin: 0 }}>רכבים בטיפול</h3>
               <Link href="/admin/cars" className="btn small secondary">הצג הכל ({activeCars.length})</Link>
             </div>
             {!activeCars.length && <div className="empty">אין רכבים</div>}
-            {activeCars.slice(0, 6).map((car) => {
+            {activeCars.slice(0, 8).map((car) => {
               const stages = (car.car_stages || []).sort((a, b) => a.step_number - b.step_number);
               const done = stages.filter((s) => s.status === 'done').length;
               const current = stages.find((s) => s.status === 'in_progress');
@@ -444,6 +385,81 @@ export default async function AdminPage() {
               );
             })}
           </div>
+
+          {/* New meeting form */}
+          <div className="card">
+            <h3>פגישה חדשה</h3>
+            <form action={addMeeting}>
+              <div className="field"><label>לקוח</label><select name="client_id" required>{clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id}</option>)}</select></div>
+              <div className="field"><label>נושא</label><input name="title" required /></div>
+              <div className="field"><label>מועד</label><input name="scheduled_at" type="datetime-local" required /></div>
+              <div className="field"><label>מיקום</label><input name="location" /></div>
+              <SubmitButton className="btn">קביעת פגישה</SubmitButton>
+            </form>
+          </div>
+
+          {/* Add car form */}
+          <div className="card">
+            <h3>הוספת רכב שנזכה</h3>
+            <form action={addCar}>
+              <div className="field"><label>לקוח</label><select name="client_id" required>{clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id}</option>)}<option value="__walk_in__">+ לקוח חד-פעמי</option></select></div>
+              <div className="field"><label>שם לקוח (ללא רשום)</label><input name="client_name" placeholder="שם הלקוח" /></div>
+              <div className="field"><label>טלפון</label><input name="client_phone" placeholder="050-1234567" dir="ltr" /></div>
+              <div className="field"><label>שם הרכב</label><input name="title" required placeholder="סקודה אוקטביה 2021" /></div>
+              <div className="grid cols-2">
+                <div className="field"><label>שנתון</label><input name="year" type="number" /></div>
+                <div className="field"><label>ק"מ</label><input name="km" type="number" /></div>
+              </div>
+              <div className="grid cols-2">
+                <div className="field"><label>מספר רישוי</label><input name="license_plate" dir="ltr" /></div>
+                <div className="field"><label>מחיר זכייה</label><input name="won_price" type="number" /></div>
+              </div>
+              <div className="field"><label>קישור מכרז</label><input name="auction_link" dir="ltr" /></div>
+              <div className="field"><label>קישור תמונה</label><input name="image_url" dir="ltr" /></div>
+              <SubmitButton className="btn">הוספת רכב</SubmitButton>
+            </form>
+          </div>
+
+          {/* Credits */}
+          <div className="card">
+            <h3>זיכוי קרדיטים</h3>
+            <form action={grantCredits}>
+              <div className="field">
+                <label>לקוח</label>
+                <select name="client_id" required>
+                  {clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id} (₪{Number(c.credits).toLocaleString()})</option>)}
+                </select>
+              </div>
+              <div className="grid cols-2">
+                <div className="field"><label>סכום ₪</label><input name="amount" type="number" required /></div>
+                <div className="field"><label>סיבה</label><input name="reason" placeholder="זיכוי ידני" /></div>
+              </div>
+              <SubmitButton className="btn small">זיכוי</SubmitButton>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== FULL WIDTH: Clients table ===== */}
+      <div className="card" style={{ marginTop: 16 }}>
+        <h3>לקוחות</h3>
+        <div className="table-wrap">
+          <table className="data">
+            <thead><tr><th>שם</th><th>טלפון</th><th>תפקיד</th><th>קרדיטים</th><th>הצטרפות</th><th></th><th></th></tr></thead>
+            <tbody>
+              {clients?.map((c) => (
+                <tr key={c.id}>
+                  <td>{c.full_name || '—'}</td>
+                  <td dir="ltr">{c.phone || '—'}</td>
+                  <td>{c.role === 'admin' ? 'מנהל' : 'לקוח'}</td>
+                  <td>₪{Number(c.credits).toLocaleString()}</td>
+                  <td className="muted">{new Date(c.created_at).toLocaleDateString('he-IL')}</td>
+                  <td><Link href={`/admin/chat/${c.id}`} style={{ color: 'var(--accent)' }}>צ׳אט</Link></td>
+                  <td>{c.role !== 'admin' && (<form action={deleteClient}><input type="hidden" name="id" value={c.id} /><DeleteButton title="מחיקה" /></form>)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </Shell>
