@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import { timeAgo } from '../../../lib/utils';
+import { sendWhatsApp } from '../../../lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,20 @@ async function updateAuctionStatus(formData) {
   const patch = { status };
   const finalPrice = formData.get('final_price');
   if (finalPrice) patch.final_price = Number(finalPrice);
-  await supabase.from('auctions').update(patch).eq('id', formData.get('auction_id'));
+  const auctionId = formData.get('auction_id');
+  await supabase.from('auctions').update(patch).eq('id', auctionId);
+
+  if (['won', 'lost', 'pending_release'].includes(status)) {
+    const { data: auction } = await supabase.from('auctions').select('car_title, client_id, profiles(full_name, phone)').eq('id', auctionId).single();
+    const phone = auction?.profiles?.phone;
+    const name = auction?.profiles?.full_name || '';
+    if (phone) {
+      const statusMsg = { won: '🎉 זכית', lost: '❌ לא זכית', pending_release: '⏳ ממתין לשחרור' };
+      const msg = `שלום ${name},\nעדכון מכרז — ${auction?.car_title}:\n${statusMsg[status] || status}${finalPrice ? `\nמחיר סופי: ₪${Number(finalPrice).toLocaleString()}` : ''}\n\nדרסו מוטורס — ליווי למכרזים`;
+      await sendWhatsApp(phone, msg);
+    }
+  }
+
   revalidatePath('/admin/auctions');
 }
 

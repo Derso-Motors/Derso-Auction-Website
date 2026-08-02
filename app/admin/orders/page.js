@@ -4,6 +4,7 @@ import { requireUser } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { timeAgo } from '../../../lib/utils';
+import { sendWhatsApp } from '../../../lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,20 @@ async function updateOrderStatus(formData) {
     if (!fileUrl.startsWith('https://')) return;
     patch.file_url = fileUrl;
   }
-  await supabase.from('report_orders').update(patch).eq('id', formData.get('order_id'));
+  const orderId = formData.get('order_id');
+  await supabase.from('report_orders').update(patch).eq('id', orderId);
+
+  if (['delivered', 'paid'].includes(status)) {
+    const { data: order } = await supabase.from('report_orders').select('report_type, profiles(full_name, phone)').eq('id', orderId).single();
+    const phone = order?.profiles?.phone;
+    const name = order?.profiles?.full_name || '';
+    if (phone) {
+      const statusMsg = status === 'delivered' ? '📄 הדוח שלך מוכן ונמסר' : '✅ התשלום התקבל';
+      const msg = `שלום ${name},\n${statusMsg} — ${order?.report_type}${fileUrl ? `\n📎 קישור לדוח: ${fileUrl}` : ''}\n\nדרסו מוטורס — ליווי למכרזים`;
+      await sendWhatsApp(phone, msg);
+    }
+  }
+
   revalidatePath('/admin/orders');
 }
 

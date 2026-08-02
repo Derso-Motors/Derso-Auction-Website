@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import Link from 'next/link';
 import { timeAgo } from '../../../lib/utils';
+import { sendWhatsApp } from '../../../lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,15 @@ async function advanceStage(formData) {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: stage } = await supabase.from('car_stages').select('title').eq('car_id', carId).eq('step_number', step).single();
   await supabase.from('car_updates').insert({ car_id: carId, author_id: user.id, stage_number: step, body: note?.trim() ? note.trim() : `השלב "${stage?.title}" הושלם` });
+
+  const { data: car } = await supabase.from('cars').select('title, client_id, client_phone, profiles(full_name, phone)').eq('id', carId).single();
+  const phone = car?.profiles?.phone || car?.client_phone;
+  const name = car?.profiles?.full_name || '';
+  if (phone) {
+    const msg = `שלום ${name},\nעדכון לגבי הרכב ${car?.title}:\n✅ השלב "${stage?.title}" הושלם בהצלחה.${note?.trim() ? `\n📝 ${note.trim()}` : ''}\n\nדרסו מוטורס — ליווי למכרזים`;
+    await sendWhatsApp(phone, msg);
+  }
+
   revalidatePath('/admin/cars');
 }
 
@@ -132,7 +142,7 @@ export default async function CarsPage() {
           <div className="card">
             <h3>הוספת רכב שנזכה</h3>
             <form action={addCar}>
-              <div className="field"><label>לקוח</label><select name="client_id" required>{clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id}</option>)}<option value="__walk_in__">+ לקוח חד-פעמי</option></select></div>
+              <div className="field"><label>לקוח</label><select name="client_id" required>{clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id}</option>)}<option value="__walk_in__">+ לקוח חד-פעמי (לא רשום)</option></select></div>
               <div className="field"><label>שם לקוח (ללא רשום)</label><input name="client_name" placeholder="שם הלקוח" /></div>
               <div className="field"><label>טלפון</label><input name="client_phone" placeholder="050-1234567" dir="ltr" /></div>
               <div className="field"><label>שם הרכב</label><input name="title" required placeholder="סקודה אוקטביה 2021" /></div>

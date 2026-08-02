@@ -3,6 +3,7 @@ import Shell from '../../../components/Shell';
 import { requireUser } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { sendWhatsApp } from '../../../lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,10 +17,21 @@ async function requireAdmin() {
 async function addRecommendationList(formData) {
   'use server';
   const supabase = await requireAdmin();
-  await supabase.from('recommendation_lists').insert({
-    client_id: formData.get('client_id'),
-    title: formData.get('title') || 'רכבים מומלצים',
-  });
+  const clientId = formData.get('client_id');
+  const title = formData.get('title') || 'רכבים מומלצים';
+  const { data: inserted } = await supabase.from('recommendation_lists').insert({
+    client_id: clientId,
+    title,
+  }).select('share_token').single();
+
+  if (clientId && inserted?.share_token) {
+    const { data: profile } = await supabase.from('profiles').select('phone, full_name').eq('id', clientId).single();
+    if (profile?.phone) {
+      const msg = `שלום ${profile.full_name || ''},\nהוכנה עבורך רשימת ${title} 🚗\nלצפייה: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://derso.co.il'}/r/${inserted.share_token}\n\nדרסו מוטורס — ליווי למכרזים`;
+      await sendWhatsApp(profile.phone, msg);
+    }
+  }
+
   revalidatePath('/admin/recommendations');
 }
 
@@ -46,6 +58,13 @@ async function deleteRecommendationList(formData) {
   const id = formData.get('id');
   await supabase.from('recommended_cars').delete().eq('list_id', id);
   await supabase.from('recommendation_lists').delete().eq('id', id);
+  revalidatePath('/admin/recommendations');
+}
+
+async function deleteRecommendedCar(formData) {
+  'use server';
+  const supabase = await requireAdmin();
+  await supabase.from('recommended_cars').delete().eq('id', formData.get('id'));
   revalidatePath('/admin/recommendations');
 }
 
