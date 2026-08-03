@@ -605,3 +605,81 @@ label { display: block; font-size: 11.5px; font-weight: 600; margin-bottom: 5px;
     linear-gradient(to bottom, rgba(68,71,77,0.05) 1px, transparent 1px);
   background-size: 20px 20px; pointer-events: none;
 }
+
+/* ── Inventory (internal car pool) ─────────────────────────────────────────── */
+.inv-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.inv-add-btn { font-size: 15px; padding: 10px 22px; }
+.inv-filters { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+.inv-filter {
+  background: var(--surface-lowest); color: var(--muted); border: 1px solid var(--border);
+  border-radius: 999px; padding: 6px 16px; font-size: 13px; cursor: pointer; transition: all 0.15s;
+}
+.inv-filter:hover { color: var(--text); }
+.inv-filter.active { background: var(--primary-container); color: var(--primary); border-color: rgba(186,199,227,0.4); }
+.inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.inv-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; display: flex; flex-direction: column; transition: transform 0.15s, border-color 0.15s;
+  animation: invCardIn 0.3s ease both;
+}
+.inv-card:hover { transform: translateY(-2px); border-color: rgba(186,199,227,0.4); }
+.inv-card.sold { opacity: 0.6; }
+@keyframes invCardIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.inv-card-img { position: relative; height: 160px; background: var(--surface-lowest); }
+.inv-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.inv-card-noimg { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 42px; opacity: 0.4; }
+.inv-sold-badge {
+  position: absolute; top: 10px; right: 10px; background: var(--danger-bg); color: var(--danger);
+  border: 1px solid rgba(255,180,171,0.4); border-radius: 999px; padding: 3px 12px; font-size: 12px; font-weight: 700;
+}
+.inv-img-count { position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.6); border-radius: 6px; padding: 2px 8px; font-size: 11px; }
+.inv-card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.inv-card-title { font-weight: 700; font-size: 15.5px; }
+.inv-card-title .muted { font-weight: 400; font-size: 13px; }
+.inv-card-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.inv-card-chips span {
+  background: var(--surface-lowest); border: 1px solid rgba(68,71,77,0.5); border-radius: 6px;
+  padding: 2px 8px; font-size: 11.5px; color: var(--muted);
+}
+.inv-card-price { display: flex; align-items: baseline; gap: 10px; font-size: 15px; }
+.inv-card-price b { color: var(--primary); font-size: 17px; }
+.strike { text-decoration: line-through; color: var(--muted-dim); font-size: 13px; }
+.inv-card-notes { font-size: 12.5px; color: var(--muted); background: var(--surface-lowest); border-radius: 6px; padding: 8px 10px; }
+.inv-card-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 6px; }
+.inv-card-actions .btn { font-size: 12px; padding: 7px 12px; }
+
+/* ── Add-car wizard modal ──────────────────────────────────────────────────── */
+.wizard-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px;
+  animation: wizFade 0.2s ease both;
+}
+@keyframes wizFade { from { opacity: 0; } to { opacity: 1; } }
+.wizard-modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  width: 100%; max-width: 460px; padding: 28px 26px 22px; position: relative;
+  max-height: 90vh; overflow-y: auto;
+  animation: wizPop 0.3s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+@keyframes wizPop { from { opacity: 0; transform: translateY(24px) scale(0.96); } to { opacity: 1; transform: none; } }
+.wizard-close {
+  position: absolute; top: 12px; left: 12px; background: none; border: none; color: var(--muted-dim);
+  font-size: 16px; cursor: pointer; padding: 6px; line-height: 1;
+}
+.wizard-close:hover { color: var(--text); }
+.wizard-progress { display: flex; gap: 6px; justify-content: center; margin-bottom: 20px; }
+.wizard-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface-highest); transition: all 0.25s; }
+.wizard-dot.active { background: var(--primary); transform: scale(1.35); }
+.wizard-dot.done { background: rgba(186,199,227,0.5); }
+.wizard-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; text-align: center; }
+.wizard-step.slide-in-next { animation: wizNext 0.25s ease both; }
+.wizard-step.slide-in-prev { animation: wizPrev 0.25s ease both; }
+@keyframes wizNext { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+@keyframes wizPrev { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+.wizard-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; }
+.wizard-nav .btn { flex: 1; }
+.wizard-summary { background: var(--surface-lowest); border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.wizard-summary-title { font-weight: 700; font-size: 16px; }
+.wizard-summary-rows { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); }
+.wizard-summary-price { display: flex; gap: 12px; align-items: baseline; font-size: 15px; }
+.wizard-summary-price b { color: var(--primary); font-size: 18px; }
