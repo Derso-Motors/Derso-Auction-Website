@@ -18,10 +18,11 @@ export default function NotificationBell() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const supabase = createClient();
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (cancelled || !user) return;
       setUserId(user.id);
       const { data } = await supabase
         .from('messages')
@@ -31,8 +32,10 @@ export default function NotificationBell() {
         .eq('sender_role', 'admin')
         .order('created_at', { ascending: false })
         .limit(10);
-      setNotifications(data || []);
-      setCount(data?.length || 0);
+      if (!cancelled) {
+        setNotifications(data || []);
+        setCount(data?.length || 0);
+      }
     }
     load();
 
@@ -45,7 +48,7 @@ export default function NotificationBell() {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { cancelled = true; supabase.removeChannel(channel); };
   }, []);
 
   const toggleOpen = async () => {
