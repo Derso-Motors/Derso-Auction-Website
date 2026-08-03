@@ -11,7 +11,7 @@ export default async function RecommendationsPage({ params }) {
     return (
       <div className="login-wrap">
         <div className="login-box" style={{ textAlign: 'center' }}>
-          <div className="logo">דרסו — ליווי למכרזים</div>
+          <div className="logo">דרסו — בית ליווי מקצועי למכרזים</div>
           <div className="logo-sub">הקישור אינו תקין או שהרשימה הוסרה</div>
         </div>
       </div>
@@ -24,7 +24,7 @@ export default async function RecommendationsPage({ params }) {
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', padding: '40px 20px' }}>
       <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 2, color: 'var(--primary)', textTransform: 'uppercase' }}>דרסו — ליווי למכרזים</div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 2, color: 'var(--primary)', textTransform: 'uppercase' }}>דרסו — בית ליווי מקצועי למכרזים</div>
         <div className="page-title">{listTitle}</div>
         <div className="page-sub">רכבים שנבחרו עבורך לפי שיחת האיפיון. סמן לגבי כל רכב אם הוא מעניין אותך.</div>
       </div>

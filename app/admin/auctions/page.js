@@ -49,7 +49,7 @@ async function updateAuctionStatus(formData) {
     const name = auction?.profiles?.full_name || '';
     if (phone) {
       const statusMsg = { won: '🎉 זכית', lost: '❌ לא זכית', pending_release: '⏳ ממתין לשחרור' };
-      const msg = `שלום ${name},\nעדכון מכרז — ${auction?.car_title}:\n${statusMsg[status] || status}${finalPrice ? `\nמחיר סופי: ₪${Number(finalPrice).toLocaleString()}` : ''}\n\nדרסו מוטורס — ליווי למכרזים`;
+      const msg = `שלום ${name},\nעדכון מכרז — ${auction?.car_title}:\n${statusMsg[status] || status}${finalPrice ? `\nמחיר סופי: ₪${Number(finalPrice).toLocaleString()}` : ''}\n\nדרסו — בית ליווי מקצועי למכרזים`;
       await sendWhatsApp(phone, msg);
     }
   }

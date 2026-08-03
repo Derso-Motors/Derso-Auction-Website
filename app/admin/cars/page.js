@@ -54,7 +54,7 @@ async function advanceStage(formData) {
   const phone = car?.profiles?.phone || car?.client_phone;
   const name = car?.profiles?.full_name || '';
   if (phone) {
-    const msg = `שלום ${name},\nעדכון לגבי הרכב ${car?.title}:\n✅ השלב "${stage?.title}" הושלם בהצלחה.${note?.trim() ? `\n📝 ${note.trim()}` : ''}\n\nדרסו מוטורס — ליווי למכרזים`;
+    const msg = `שלום ${name},\nעדכון לגבי הרכב ${car?.title}:\n✅ השלב "${stage?.title}" הושלם בהצלחה.${note?.trim() ? `\n📝 ${note.trim()}` : ''}\n\nדרסו — בית ליווי מקצועי למכרזים`;
     await sendWhatsApp(phone, msg);
   }
 

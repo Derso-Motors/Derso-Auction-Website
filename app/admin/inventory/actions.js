@@ -51,7 +51,7 @@ export async function sendCarToClient(payload) {
     const { data: profile } = await supabase.from('profiles').select('phone, full_name').eq('id', clientId).single();
     if (profile?.phone) {
       const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://derso.co.il';
-      const msg = `שלום ${profile.full_name || ''},\nהוספנו לך רכב חדש לרשימת "${LIST_TITLE}" 🚗\n${payload.title.trim()}\nלצפייה: ${site}/r/${list.share_token}\n\nדרסו מוטורס — ליווי למכרזים`;
+      const msg = `שלום ${profile.full_name || ''},\nהוספנו לך רכב חדש לרשימת "${LIST_TITLE}" 🚗\n${payload.title.trim()}\nלצפייה: ${site}/r/${list.share_token}\n\nדרסו — בית ליווי מקצועי למכרזים`;
       try { await sendWhatsApp(profile.phone, msg); } catch {}
     }
   }

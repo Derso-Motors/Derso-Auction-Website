@@ -259,7 +259,7 @@ export default function Shell({ children, active }) {
           <Link href="/privacy">מדיניות פרטיות</Link>
           <Link href="/disclaimer">הסרת אחריות</Link>
         </div>
-        <p>&copy; 2024 V-Track Analytics. כל הזכויות שמורות ל-דרסו מוטורס.</p>
+        <p>&copy; 2024 V-Track Analytics. כל הזכויות שמורות לדרסו — בית ליווי מקצועי למכרזים.</p>
       </footer>
     </div>
   );

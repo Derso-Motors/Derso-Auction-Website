@@ -46,7 +46,7 @@ async function addMeeting(formData) {
   if (phone) {
     const dateStr = scheduledAt.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
     const timeStr = scheduledAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-    const msg = `שלום ${name || ''},\nנקבעה פגישה חדשה:\n📋 ${title}\n📅 ${dateStr} בשעה ${timeStr}${location ? `\n📍 ${location}` : ''}\n\nדרסו מוטורס — ליווי למכרזים`;
+    const msg = `שלום ${name || ''},\nנקבעה פגישה חדשה:\n📋 ${title}\n📅 ${dateStr} בשעה ${timeStr}${location ? `\n📍 ${location}` : ''}\n\nדרסו — בית ליווי מקצועי למכרזים`;
     await sendWhatsApp(phone, msg);
   }
 

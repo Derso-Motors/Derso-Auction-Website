@@ -41,7 +41,7 @@ async function updateOrderStatus(formData) {
     const name = order?.profiles?.full_name || '';
     if (phone) {
       const statusMsg = status === 'delivered' ? '📄 הדוח שלך מוכן ונמסר' : '✅ התשלום התקבל';
-      const msg = `שלום ${name},\n${statusMsg} — ${order?.report_type}${fileUrl ? `\n📎 קישור לדוח: ${fileUrl}` : ''}\n\nדרסו מוטורס — ליווי למכרזים`;
+      const msg = `שלום ${name},\n${statusMsg} — ${order?.report_type}${fileUrl ? `\n📎 קישור לדוח: ${fileUrl}` : ''}\n\nדרסו — בית ליווי מקצועי למכרזים`;
       await sendWhatsApp(phone, msg);
     }
   }

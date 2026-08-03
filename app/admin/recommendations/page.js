@@ -27,7 +27,7 @@ async function addRecommendationList(formData) {
   if (clientId && inserted?.share_token) {
     const { data: profile } = await supabase.from('profiles').select('phone, full_name').eq('id', clientId).single();
     if (profile?.phone) {
-      const msg = `שלום ${profile.full_name || ''},\nהוכנה עבורך רשימת ${title} 🚗\nלצפייה: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://derso.co.il'}/r/${inserted.share_token}\n\nדרסו מוטורס — ליווי למכרזים`;
+      const msg = `שלום ${profile.full_name || ''},\nהוכנה עבורך רשימת ${title} 🚗\nלצפייה: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://derso.co.il'}/r/${inserted.share_token}\n\nדרסו — בית ליווי מקצועי למכרזים`;
       await sendWhatsApp(profile.phone, msg);
     }
   }

@@ -65,7 +65,7 @@ export default function LoginPage() {
             חיבור מאובטח בלבד
           </div>
           <h1 className="login-hero-title">
-            דרסו — ליווי למכרזים
+            דרסו — בית ליווי מקצועי למכרזים
             <span>מערכת ניהול וליווי רכישת רכבים</span>
           </h1>
           <p className="login-hero-desc">
@@ -143,7 +143,7 @@ export default function LoginPage() {
           <a href="/privacy">מדיניות פרטיות</a>
           <a href="/disclaimer">הסרת אחריות</a>
         </div>
-        <p>כל הזכויות שמורות לדרסו מוטורס &copy; {new Date().getFullYear()}. המידע מסווג ומוגן.</p>
+        <p>כל הזכויות שמורות לדרסו — בית ליווי מקצועי למכרזים &copy; {new Date().getFullYear()}. המידע מסווג ומוגן.</p>
       </footer>
     </div>
   );
