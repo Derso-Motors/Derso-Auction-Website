@@ -4,6 +4,7 @@ import { requireUser } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { sendWhatsApp } from '../../../lib/whatsapp';
+import { carMessage, processDueItems, ilDate } from '../../../lib/broadcast';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,51 +15,6 @@ async function requireAdmin() {
   const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (p?.role !== 'admin') redirect('/');
   return supabase;
-}
-
-function ilHour() {
-  return Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', hour: 'numeric', hour12: false }).format(new Date()));
-}
-
-function carMessage(item) {
-  const d = item.details || {};
-  const lines = [
-    `🚗 ${item.title}`,
-    d.year && `שנתון: ${d.year}`,
-    d.km && `ק"מ: ${Number(d.km).toLocaleString('he-IL')}`,
-    d.list_price && `מחיר מחירון: ₪${Number(d.list_price).toLocaleString('he-IL')}`,
-    d.est_price && `מחיר משוער: ₪${Number(d.est_price).toLocaleString('he-IL')}`,
-    d.auction_link && `לצפייה במכרז: ${d.auction_link}`,
-    d.notes && `📝 ${d.notes}`,
-  ].filter(Boolean);
-  return `${lines.join('\n')}\n\nדרסו מוטורס — ליווי למכרזים`;
-}
-
-// Send every due pending item (called on page load and by the "process now" button).
-async function processDueItems(supabase) {
-  const { data: settings } = await supabase.from('broadcast_settings').select('*').eq('id', 1).single();
-  if (settings?.paused) return 0;
-  const h = ilHour();
-  const { quiet_start: qs = 21, quiet_end: qe = 9 } = settings || {};
-  const quiet = qs > qe ? (h >= qs || h < qe) : (h >= qs && h < qe);
-  if (quiet) return 0;
-
-  const { data: due } = await supabase
-    .from('broadcast_queue')
-    .select('*, profiles(full_name, phone)')
-    .eq('status', 'pending')
-    .lte('scheduled_at', new Date().toISOString())
-    .limit(30);
-
-  let sent = 0;
-  for (const item of due || []) {
-    if (item.profiles?.phone) {
-      try { await sendWhatsApp(item.profiles.phone, carMessage(item)); } catch { continue; }
-    }
-    await supabase.from('broadcast_queue').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', item.id);
-    sent++;
-  }
-  return sent;
 }
 
 /* ── Server actions ─────────────────────────────────────────────────────────── */
@@ -82,8 +38,8 @@ async function itemAction(formData) {
   if (act === 'send_now') {
     const { data: item } = await supabase.from('broadcast_queue').select('*, profiles(phone)').eq('id', id).single();
     if (item && ['pending', 'held'].includes(item.status) && item.profiles?.phone) {
-      await sendWhatsApp(item.profiles.phone, carMessage(item));
-      await supabase.from('broadcast_queue').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', id);
+      const res = await sendWhatsApp(item.profiles.phone, carMessage(item));
+      await supabase.from('broadcast_queue').update({ status: 'sent', sent_at: new Date().toISOString(), wa_message_id: res.messageId || null }).eq('id', id);
     }
   }
   revalidatePath(PAGE);
@@ -123,10 +79,11 @@ async function instantSend(formData) {
   };
   const { data: profile } = await supabase.from('profiles').select('phone').eq('id', clientId).single();
   if (profile?.phone && item.title) {
-    await sendWhatsApp(profile.phone, `⚡ התאמה מדויקת בשבילך!\n\n${carMessage(item)}`);
+    const res = await sendWhatsApp(profile.phone, `⚡ התאמה מדויקת בשבילך!\n\n${carMessage(item)}`);
     await supabase.from('broadcast_queue').insert({
       client_id: clientId, title: item.title, details: item.details,
       kind: 'instant', source: 'manual', status: 'sent', sent_at: new Date().toISOString(),
+      wa_message_id: res.messageId || null,
     });
   }
   revalidatePath(PAGE);
@@ -159,13 +116,51 @@ async function removeSubscriber(formData) {
   revalidatePath(PAGE);
 }
 
+async function setDailyHour(formData) {
+  'use server';
+  const supabase = await requireAdmin();
+  const h = Number(formData.get('hour'));
+  if (h >= 0 && h <= 23) await supabase.from('broadcast_settings').update({ daily_hour: h }).eq('id', 1);
+  revalidatePath(PAGE);
+}
+
+// Send a follow-up about a car that was already sent, as a WhatsApp *reply*
+// quoting the original car message in the client's chat.
+async function sendCarUpdate(formData) {
+  'use server';
+  const supabase = await requireAdmin();
+  const id = formData.get('id');
+  const text = (formData.get('text') || '').trim();
+  if (!text) return;
+  const { data: item } = await supabase.from('broadcast_queue').select('*, profiles(phone)').eq('id', id).single();
+  if (item?.status === 'sent' && item.profiles?.phone) {
+    await sendWhatsApp(item.profiles.phone, `📢 עדכון לגבי הרכב:\n${text}`, { replyTo: item.wa_message_id || undefined });
+  }
+  revalidatePath(PAGE);
+}
+
+// "Delete": WhatsApp's API can't delete a delivered message, so we reply to the
+// original car message marking it no longer relevant, and flag it in the log.
+async function retractCar(formData) {
+  'use server';
+  const supabase = await requireAdmin();
+  const id = formData.get('id');
+  const { data: item } = await supabase.from('broadcast_queue').select('*, profiles(phone)').eq('id', id).single();
+  if (item?.status === 'sent' && !item.retracted && item.profiles?.phone) {
+    await sendWhatsApp(item.profiles.phone, '🚫 הרכב הזה כבר לא רלוונטי — מתנצלים! ממשיכים לחפש בשבילך רכבים מתאימים 🚗', { replyTo: item.wa_message_id || undefined });
+    await supabase.from('broadcast_queue').update({ retracted: true }).eq('id', id);
+  }
+  revalidatePath(PAGE);
+}
+
 /* ── Page ───────────────────────────────────────────────────────────────────── */
 
 function minutesLeft(iso) {
   return Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000));
 }
 
-export default async function BroadcastsPage() {
+export default async function BroadcastsPage({ searchParams }) {
+  const archivePage = Math.max(1, Number(searchParams?.page) || 1);
   const supabase = await requireAdmin();
 
   // Opportunistic processing: any due car goes out when the page is opened.
@@ -176,12 +171,24 @@ export default async function BroadcastsPage() {
     supabase.from('broadcast_queue').select('*, profiles(full_name)').in('status', ['pending', 'held']).order('scheduled_at'),
     supabase.from('broadcast_subscribers').select('*, profiles(full_name, phone)').order('created_at'),
     supabase.from('profiles').select('id, full_name').eq('role', 'client').order('full_name'),
-    supabase.from('broadcast_queue').select('*, profiles(full_name)').eq('status', 'sent').order('sent_at', { ascending: false }).limit(15),
+    supabase.from('broadcast_queue').select('*, profiles(full_name)').eq('status', 'sent').order('sent_at', { ascending: false }).limit(500),
   ]);
 
   const activeSubs = (subs || []).filter((s) => s.active);
   const revenue = activeSubs.reduce((sum, s) => sum + Number(s.monthly_fee || 0), 0);
   const subscribedIds = new Set((subs || []).map((s) => s.client_id));
+
+  // Archive: sent items grouped into per-date folders, 10 dates per page.
+  const DATES_PER_PAGE = 10;
+  const folders = [];
+  const folderIdx = {};
+  for (const item of recentSent || []) {
+    const d = ilDate(item.sent_at || item.created_at);
+    if (!(d in folderIdx)) { folderIdx[d] = folders.length; folders.push({ date: d, items: [] }); }
+    folders[folderIdx[d]].items.push(item);
+  }
+  const totalPages = Math.max(1, Math.ceil(folders.length / DATES_PER_PAGE));
+  const pageFolders = folders.slice((archivePage - 1) * DATES_PER_PAGE, archivePage * DATES_PER_PAGE);
 
   // Group pending/held items by client so the screen stays tidy.
   const byClient = {};
@@ -202,7 +209,14 @@ export default async function BroadcastsPage() {
           <div><b style={{ fontSize: 20 }}>{activeSubs.length}</b> <span className="muted">מנויים פעילים</span></div>
           <div><b style={{ fontSize: 20, color: 'var(--success)' }}>₪{revenue.toLocaleString('he-IL')}</b> <span className="muted">הכנסה חודשית משידור</span></div>
         </div>
-        <div className="row" style={{ gap: 8 }}>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <form action={setDailyHour} className="row" style={{ gap: 6, alignItems: 'center' }}>
+            <span className="muted" style={{ fontSize: 13 }}>שידור יומי בשעה</span>
+            <select name="hour" defaultValue={settings?.daily_hour ?? 9} style={{ width: 74 }}>
+              {Array.from({ length: 15 }, (_, i) => i + 6).map((h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+            </select>
+            <SubmitButton className="btn secondary small">קבע</SubmitButton>
+          </form>
           <form action={processNow}><SubmitButton className="btn secondary">🔄 עיבוד תור עכשיו</SubmitButton></form>
           <form action={togglePause}>
             <SubmitButton className={settings?.paused ? 'btn' : 'btn danger-outline'} label={settings?.paused ? '▶️ הפעלת השידור' : '⏸️ השהיית כל השידור'} />
@@ -343,17 +357,67 @@ export default async function BroadcastsPage() {
         </form>
       </div>
 
-      {/* Recently sent */}
+      {/* Archive — one folder per broadcast day, 10 days per page */}
       <div className="card">
-        <h3>נשלחו לאחרונה</h3>
-        {!recentSent?.length && <div className="empty">עוד לא נשלחו רכבים</div>}
-        {recentSent?.map((item) => (
-          <div key={item.id} style={{ padding: '6px 0', borderBottom: '1px solid rgba(68,71,77,0.3)', fontSize: 13.5 }}>
-            {item.kind === 'instant' ? '⚡' : '📡'} <b>{item.profiles?.full_name}</b> — {item.title}
-            <span className="muted"> · {item.sent_at && new Date(item.sent_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</span>
+        <h3>ארכיון שידורים — לפי ימים</h3>
+        {!pageFolders.length && <div className="empty">עוד לא נשלחו רכבים</div>}
+        {pageFolders.map((folder, fi) => {
+          const daily = folder.items.filter((i) => i.kind !== 'instant');
+          const instant = folder.items.filter((i) => i.kind === 'instant');
+          const byName = {};
+          for (const it of folder.items) (byName[it.profiles?.full_name || 'לקוח'] = byName[it.profiles?.full_name || 'לקוח'] || []).push(it);
+          return (
+            <details key={folder.date} open={archivePage === 1 && fi === 0} style={{ marginBottom: 10 }}>
+              <summary style={{ cursor: 'pointer', padding: '8px 0', fontWeight: 700 }}>
+                📅 {folder.date} <span className="muted">— שידור יומי ({daily.length}) · פתאומיות ({instant.length})</span>
+              </summary>
+              <div style={{ paddingRight: 16 }}>
+                {Object.entries(byName).map(([name, items]) => (
+                  <div key={name} style={{ marginBottom: 6 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13.5, padding: '4px 0' }}>👤 {name} <span className="muted">({items.length})</span></div>
+                    {items.map((item) => (
+                      <div key={item.id} style={{ padding: '6px 0 6px 0', borderBottom: '1px solid rgba(68,71,77,0.3)', fontSize: 13.5 }}>
+                        <div className="row between" style={{ flexWrap: 'wrap', gap: 6 }}>
+                          <div style={{ flex: 1, minWidth: 180 }}>
+                            {item.kind === 'instant' ? '⚡' : '📡'}{' '}
+                            <span style={item.retracted ? { textDecoration: 'line-through', opacity: 0.55 } : undefined}>{item.title}</span>
+                            {item.retracted && <span style={{ color: 'var(--danger)', fontSize: 12 }}> · בוטל</span>}
+                            <span className="muted" style={{ fontSize: 11.5 }}> · {item.sent_at && new Date(item.sent_at).toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          {!item.retracted && (
+                            <div className="row" style={{ gap: 6, flexShrink: 0 }}>
+                              <details>
+                                <summary className="btn secondary small" style={{ listStyle: 'none', cursor: 'pointer' }}>✏️ עדכן</summary>
+                                <form action={sendCarUpdate} className="row" style={{ gap: 6, marginTop: 6 }}>
+                                  <input type="hidden" name="id" value={item.id} />
+                                  <input name="text" required placeholder="מה השתנה? נשלח כתגובה להודעת הרכב" style={{ minWidth: 220 }} />
+                                  <SubmitButton className="btn small">📤 שלח עדכון</SubmitButton>
+                                </form>
+                              </details>
+                              <form action={retractCar}>
+                                <input type="hidden" name="id" value={item.id} />
+                                <SubmitButton className="btn danger-outline small" title="שולח ללקוח תגובה על הודעת הרכב שהוא כבר לא רלוונטי">🚫 לא רלוונטי</SubmitButton>
+                              </form>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </details>
+          );
+        })}
+        {totalPages > 1 && (
+          <div className="row" style={{ gap: 6, marginTop: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+              <a key={n} href={`${PAGE}?page=${n}`} className={`inv-filter ${n === archivePage ? 'active' : ''}`}>עמוד {n}</a>
+            ))}
           </div>
-        ))}
+        )}
       </div>
+
     </Shell>
   );
 }
