@@ -25,6 +25,10 @@ export default async function AdminPage() {
     supabase.from('messages').select('id, client_id, body, created_at, profiles(full_name)').eq('sender_role', 'client').eq('read', false).order('created_at', { ascending: false }).limit(5),
   ]);
 
+  const { data: broadcastSubs } = await supabase.from('broadcast_subscribers').select('monthly_fee, active');
+  const activeBroadcastSubs = (broadcastSubs || []).filter((s) => s.active);
+  const broadcastRevenue = activeBroadcastSubs.reduce((sum, s) => sum + Number(s.monthly_fee || 0), 0);
+
   const sections = [
     { href: '/admin/cars', icon: '🚗', label: 'רכבים', desc: 'ניהול רכבים, שלבים ועדכונים', count: carCount },
     { href: '/admin/clients', icon: '👥', label: 'לקוחות', desc: 'ניהול לקוחות וקרדיטים', count: clientCount },
@@ -34,6 +38,8 @@ export default async function AdminPage() {
     { href: '/admin/messages', icon: '💬', label: 'הודעות', desc: 'הודעות מלקוחות', count: unread?.length || 0 },
     { href: '/admin/auctions', icon: '⚖️', label: 'מעקב מכרזים', desc: 'הצעות, זכיות והיסטוריית מכרזים', count: auctionCount },
     { href: '/admin/marketplace', icon: '🏪', label: 'העלאה למכירה', desc: 'BidSpirit → Facebook Marketplace' },
+    { href: '/admin/inventory', icon: '📦', label: 'מאגר רכבים', desc: 'מאגר פנימי לשיחות אפיון', count: undefined },
+    { href: '/admin/broadcasts', icon: '📡', label: 'שידורים', desc: `${activeBroadcastSubs.length} מנויים · ₪${broadcastRevenue.toLocaleString('he-IL')} בחודש`, count: activeBroadcastSubs.length },
   ];
 
   return (
