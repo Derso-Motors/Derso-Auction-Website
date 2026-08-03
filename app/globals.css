@@ -700,3 +700,47 @@ label { display: block; font-size: 11.5px; font-weight: 600; margin-bottom: 5px;
   animation: wizPop 0.3s cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
 .inv-bidspirit { border-style: dashed; }
+
+/* ── Personal assistant chat bubble ────────────────────────────────────────── */
+.assistant-bubble {
+  position: fixed; bottom: 22px; left: 22px; z-index: 400;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--primary-container); color: var(--primary);
+  border: 1px solid rgba(186,199,227,0.45); border-radius: 999px;
+  padding: 10px 16px 10px 14px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.45); transition: transform 0.15s, border-color 0.15s;
+  animation: wizPop 0.35s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.assistant-bubble:hover { transform: translateY(-2px); border-color: var(--primary); }
+.assistant-bubble.open { border-radius: 50%; width: 48px; height: 48px; padding: 0; justify-content: center; }
+.assistant-bubble-icon { font-size: 20px; line-height: 1; }
+.assistant-bubble-label { white-space: nowrap; }
+.assistant-panel {
+  position: fixed; bottom: 84px; left: 22px; z-index: 400;
+  width: 340px; max-width: calc(100vw - 32px); height: 440px; max-height: 70vh;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.55);
+  animation: wizPop 0.25s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.assistant-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: var(--primary-container); color: var(--primary);
+  font-weight: 700; font-size: 14.5px; border-bottom: 1px solid var(--border);
+}
+.assistant-header button { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 14px; padding: 4px; }
+.assistant-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.assistant-msg {
+  max-width: 85%; padding: 9px 13px; border-radius: 12px; font-size: 13.5px; line-height: 1.5;
+  animation: invCardIn 0.2s ease both; white-space: pre-wrap; word-break: break-word;
+}
+.assistant-msg.bot { background: var(--surface-high); align-self: flex-start; border-bottom-right-radius: 4px; }
+.assistant-msg.user { background: var(--primary-container); color: var(--primary); align-self: flex-end; border-bottom-left-radius: 4px; }
+.assistant-msg.typing { opacity: 0.6; letter-spacing: 3px; }
+.assistant-input { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); background: var(--surface-low); }
+.assistant-input input { flex: 1; }
+.assistant-input .btn { padding: 8px 16px; flex-shrink: 0; }
+@media (max-width: 900px) {
+  .assistant-bubble { bottom: 16px; left: 16px; }
+  .assistant-panel { bottom: 74px; left: 16px; }
+}
