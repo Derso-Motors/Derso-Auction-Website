@@ -11,6 +11,11 @@ export default function Chat({ clientId, initialMessages, senderRole = 'client' 
 
   useEffect(() => {
     const supabase = createClient();
+    if (senderRole === 'client') {
+      supabase.from('messages').update({ read: true })
+        .eq('client_id', clientId).eq('sender_role', 'admin').eq('read', false)
+        .then();
+    }
     const channel = supabase
       .channel(`messages-${clientId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `client_id=eq.${clientId}` }, (payload) => {
@@ -18,7 +23,7 @@ export default function Chat({ clientId, initialMessages, senderRole = 'client' 
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [clientId]);
+  }, [clientId, senderRole]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

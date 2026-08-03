@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createClient } from '../lib/supabase-client';
 
 export default function NotificationBell() {
@@ -7,6 +7,15 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [userId, setUserId] = useState(null);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -42,7 +51,6 @@ export default function NotificationBell() {
   const toggleOpen = async () => {
     const willOpen = !open;
     setOpen(willOpen);
-    // Opening the dropdown marks everything as read and clears the badge
     if (willOpen && count > 0 && userId) {
       setCount(0);
       const supabase = createClient();
@@ -56,7 +64,7 @@ export default function NotificationBell() {
   };
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative' }} ref={ref}>
       <button className="notif-bell" onClick={toggleOpen} aria-label="התראות">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />

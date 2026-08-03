@@ -139,11 +139,11 @@ export default function LoginPage() {
       {/* Footer */}
       <footer className="login-footer">
         <div className="login-footer-links">
-          <a href="#">תקנון שימוש</a>
-          <a href="#">מדיניות פרטיות</a>
-          <a href="#">הצהרת נגישות</a>
+          <a href="/terms">תנאי שימוש</a>
+          <a href="/privacy">מדיניות פרטיות</a>
+          <a href="/disclaimer">הסרת אחריות</a>
         </div>
-        <p>כל הזכויות שמורות לדרסו מוטורס © {new Date().getFullYear()}. המידע מסווג ומוגן.</p>
+        <p>כל הזכויות שמורות לדרסו מוטורס &copy; {new Date().getFullYear()}. המידע מסווג ומוגן.</p>
       </footer>
     </div>
   );
