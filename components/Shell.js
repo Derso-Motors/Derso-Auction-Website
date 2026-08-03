@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase-client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import NotificationBell from './NotificationBell';
 
 const ICONS = {
@@ -38,6 +38,130 @@ const CLIENT_NAV = [
   { href: '/messages', key: 'messages', label: 'שאלות ופניות', icon: 'messages' },
 ];
 
+const SEARCH_ITEMS = [
+  { label: 'ראשי', href: '/' },
+  { label: 'ניהול', href: '/admin' },
+  { label: 'רכבים', href: '/admin/cars' },
+  { label: 'לקוחות', href: '/admin/clients' },
+  { label: 'הזמנות דוחות', href: '/admin/orders' },
+  { label: 'יומן פגישות', href: '/admin/calendar' },
+  { label: 'המלצות', href: '/admin/recommendations' },
+  { label: 'הודעות', href: '/admin/messages' },
+  { label: 'מעקב מכרזים', href: '/admin/auctions' },
+  { label: 'העלאה למכירה', href: '/admin/marketplace' },
+  { label: 'דוחות ותשלומים', href: '/reports' },
+  { label: 'שאלות ופניות', href: '/messages' },
+];
+
+function SearchBar() {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const router = useRouter();
+  const inputRef = useRef(null);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (open && inputRef.current) inputRef.current.focus();
+  }, [open]);
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const filtered = query
+    ? SEARCH_ITEMS.filter(i => i.label.includes(query) || i.href.includes(query))
+    : SEARCH_ITEMS;
+
+  return (
+    <div className="topbar-search" ref={wrapRef} style={{ position: 'relative' }} onClick={() => setOpen(true)}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted-dim)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input
+        ref={inputRef}
+        type="text"
+        placeholder="חיפוש רכב, לקוח, מכרז..."
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') { setOpen(false); setQuery(''); }
+          if (e.key === 'Enter' && filtered.length > 0) {
+            router.push(filtered[0].href);
+            setOpen(false);
+            setQuery('');
+          }
+        }}
+      />
+      {open && (
+        <div className="search-dropdown">
+          {filtered.length === 0 && <div className="empty" style={{ padding: 12 }}>לא נמצאו תוצאות</div>}
+          {filtered.map(item => (
+            <button
+              key={item.href}
+              className="search-item"
+              onClick={() => { router.push(item.href); setOpen(false); setQuery(''); }}
+              type="button"
+            >
+              {item.label}
+              <span className="muted" style={{ fontSize: 11 }}>{item.href}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HelpButton() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div style={{ position: 'relative' }} ref={ref}>
+      <button className="icon-sidebar-item" title="עזרה" type="button" onClick={() => setOpen(!open)}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </button>
+      {open && (
+        <div className="help-dropdown">
+          <div className="notif-title">עזרה ותמיכה</div>
+          <a href="/messages" className="help-item">
+            <span>💬</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>שליחת הודעה</div>
+              <div className="muted">פנה אלינו דרך מערכת ההודעות</div>
+            </div>
+          </a>
+          <a href="tel:+972559506913" className="help-item">
+            <span>📞</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>התקשר אלינו</div>
+              <div className="muted">055-950-6913</div>
+            </div>
+          </a>
+          <a href="https://wa.me/972559506913" target="_blank" rel="noopener noreferrer" className="help-item">
+            <span>📱</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>WhatsApp</div>
+              <div className="muted">שלח הודעה בוואטסאפ</div>
+            </div>
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Shell({ children, active }) {
   const router = useRouter();
   const [profile, setProfile] = useState(null);
@@ -68,17 +192,14 @@ export default function Shell({ children, active }) {
     <div className="shell">
       <header className="topbar">
         <div className="topbar-right">
-          <div className="topbar-search">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted-dim)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" placeholder="חיפוש רכב, לקוח, מכרז..." readOnly />
-          </div>
+          <SearchBar />
         </div>
         <div className="topbar-brand">V-TRACK ANALYTICS</div>
         <div className="topbar-left">
-          <NotificationBell />
-          <button className="topbar-icon" title="הגדרות" type="button">
+          <button className="topbar-icon" title="הגדרות" type="button" onClick={() => router.push('/admin')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
+          <NotificationBell />
           <div className="topbar-avatar" title={profile?.full_name || email}>
             {initials}
           </div>
@@ -96,9 +217,7 @@ export default function Shell({ children, active }) {
           ))}
         </div>
         <div className="icon-sidebar-bottom">
-          <button className="icon-sidebar-item" title="עזרה" type="button">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </button>
+          <HelpButton />
           <button className="icon-sidebar-item" type="button" title="התנתקות" onClick={handleSignOut}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
@@ -109,9 +228,9 @@ export default function Shell({ children, active }) {
 
       <footer className="app-footer">
         <div className="app-footer-links">
-          <a href="#">תנאי שימוש</a>
-          <a href="#">מדיניות פרטיות</a>
-          <a href="#">הסרת אחריות</a>
+          <Link href="/terms">תנאי שימוש</Link>
+          <Link href="/privacy">מדיניות פרטיות</Link>
+          <Link href="/disclaimer">הסרת אחריות</Link>
         </div>
         <p>&copy; 2024 V-Track Analytics. כל הזכויות שמורות ל-דרסו מוטורס.</p>
       </footer>
