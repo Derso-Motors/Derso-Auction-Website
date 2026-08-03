@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../lib/supabase-client';
+import { sendCarToClient } from './actions';
 
 // The add-car wizard: one simple question-group per step, like the Telegram bot.
 const STEPS = [
@@ -169,11 +170,102 @@ function AddWizard({ onClose, onSaved }) {
   );
 }
 
-export default function InventoryClient({ initialCars }) {
+// Review-and-send modal: everything is editable before it goes to the client's
+// "רכבים בהמלצה" list. Used both for inventory cars and for BidSpirit links.
+function SendCarModal({ clients, initial, onClose, onSent }) {
+  const [form, setForm] = useState({
+    client_id: '', title: '', year: '', km: '', list_price: '', est_price: '',
+    auction_link: '', image_url: '', notes: '', ...initial,
+  });
+  const [notify, setNotify] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function send() {
+    if (!form.client_id) { setError('בחר לקוח'); return; }
+    if (!form.title.trim()) { setError('שם הרכב הוא שדה חובה'); return; }
+    setSending(true); setError('');
+    const res = await sendCarToClient({ ...form, notify });
+    setSending(false);
+    if (!res?.ok) { setError('השליחה נכשלה. נסה שוב.'); return; }
+    onSent();
+  }
+
+  return (
+    <div className="wizard-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="wizard-modal">
+        <button className="wizard-close" onClick={onClose} type="button" aria-label="סגירה">✕</button>
+        <h3 className="wizard-title">שליחת רכב ללקוח 📤</h3>
+        <p className="muted" style={{ fontSize: 12.5, textAlign: 'center', marginTop: -8, marginBottom: 14 }}>
+          בדוק וערוך את הפרטים לפני השליחה — הרכב יופיע אצל הלקוח בעמוד "רכבים בהמלצה"
+        </p>
+
+        <div className="field">
+          <label>לקוח *</label>
+          <select value={form.client_id} onChange={(e) => set('client_id', e.target.value)}>
+            <option value="">בחר לקוח...</option>
+            {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label>שם הרכב *</label>
+          <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="מרצדס EQE 350 · 2023" />
+        </div>
+        <div className="grid cols-2">
+          <div className="field"><label>שנתון</label><input type="number" dir="ltr" value={form.year} onChange={(e) => set('year', e.target.value)} /></div>
+          <div className="field"><label>ק"מ</label><input type="number" dir="ltr" value={form.km} onChange={(e) => set('km', e.target.value)} /></div>
+          <div className="field"><label>מחיר מחירון (₪)</label><input type="number" dir="ltr" value={form.list_price} onChange={(e) => set('list_price', e.target.value)} /></div>
+          <div className="field"><label>מחיר משוער (₪)</label><input type="number" dir="ltr" value={form.est_price} onChange={(e) => set('est_price', e.target.value)} /></div>
+        </div>
+        <div className="field">
+          <label>קישור למכרז (בידספיריט וכו')</label>
+          <input dir="ltr" value={form.auction_link} onChange={(e) => set('auction_link', e.target.value)} placeholder="https://il.bidspirit.com/..." />
+        </div>
+        <div className="field">
+          <label>קישור תמונה</label>
+          <input dir="ltr" value={form.image_url} onChange={(e) => set('image_url', e.target.value)} placeholder="https://..." />
+        </div>
+        <div className="field">
+          <label>הערות ללקוח</label>
+          <textarea rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="מצב מצוין, מומלץ בחום..." />
+        </div>
+        <label className="row" style={{ gap: 8, fontSize: 13.5, cursor: 'pointer', marginBottom: 4 }}>
+          <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} style={{ width: 'auto' }} />
+          שלח ללקוח הודעת וואטסאפ עם קישור לרשימה
+        </label>
+
+        {error && <div className="error-msg">{error}</div>}
+        <div className="wizard-nav">
+          <button className="btn secondary" type="button" onClick={onClose}>ביטול</button>
+          <button className="btn" type="button" disabled={sending} onClick={send}>
+            {sending ? 'שולח...' : '📤 שליחה ללקוח'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function InventoryClient({ initialCars, clients = [] }) {
   const router = useRouter();
   const [cars, setCars] = useState(initialCars);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [filter, setFilter] = useState('available');
+  const [sendInitial, setSendInitial] = useState(null); // null = closed
+  const [sentMsg, setSentMsg] = useState('');
+
+  function openSendForCar(car) {
+    setSendInitial({
+      title: [car.make, car.model, car.trim_level].filter(Boolean).join(' ') + (car.year ? ` · ${car.year}` : ''),
+      year: car.year ?? '',
+      km: car.km ?? '',
+      list_price: car.list_price ?? '',
+      est_price: car.price ?? '',
+      image_url: car.images?.[0] || '',
+      notes: car.notes || '',
+    });
+  }
 
   async function reload() {
     const supabase = createClient();
@@ -254,6 +346,9 @@ export default function InventoryClient({ initialCars }) {
               </div>
               {car.notes && <div className="inv-card-notes">{car.notes}</div>}
               <div className="inv-card-actions">
+                {car.status !== 'sold' && (
+                  <button className="btn" type="button" onClick={() => openSendForCar(car)}>📤 שליחה ללקוח</button>
+                )}
                 <button className="btn secondary" type="button" onClick={() => toggleSold(car)}>
                   {car.status === 'sold' ? '↩️ החזרה למלאי' : '✅ נמכר'}
                 </button>
@@ -264,10 +359,35 @@ export default function InventoryClient({ initialCars }) {
         ))}
       </div>
 
+      {/* Send a car straight from a BidSpirit (or any auction) link */}
+      <div className="card inv-bidspirit" style={{ marginTop: 28 }}>
+        <h3>שליחת רכב מקישור בידספיריט 🔗</h3>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+          מצאת רכב מעניין במכרז? הדבק קישור, מלא את הפרטים, ערוך ושלח ללקוח — בלי להוסיף אותו למאגר.
+        </p>
+        <button className="btn" type="button" onClick={() => setSendInitial({ auction_link: '' })}>
+          📤 שליחת רכב מקישור
+        </button>
+      </div>
+
+      {sentMsg && <div className="inv-toast">{sentMsg}</div>}
+
       {wizardOpen && (
         <AddWizard
           onClose={() => setWizardOpen(false)}
           onSaved={() => { setWizardOpen(false); reload(); }}
+        />
+      )}
+      {sendInitial !== null && (
+        <SendCarModal
+          clients={clients}
+          initial={sendInitial}
+          onClose={() => setSendInitial(null)}
+          onSent={() => {
+            setSendInitial(null);
+            setSentMsg('✅ הרכב נשלח ללקוח והתווסף לעמוד "רכבים בהמלצה" שלו');
+            setTimeout(() => setSentMsg(''), 4000);
+          }}
         />
       )}
     </div>

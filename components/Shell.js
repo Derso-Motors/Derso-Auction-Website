@@ -37,6 +37,7 @@ const ADMIN_NAV = [
 
 const CLIENT_NAV = [
   { href: '/', key: 'home', label: 'ראשי', icon: 'home' },
+  { href: '/recommended', key: 'recommended', label: 'רכבים בהמלצה', icon: 'recommendations' },
   { href: '/reports', key: 'reports', label: 'דוחות ותשלומים', icon: 'reports' },
   { href: '/messages', key: 'messages', label: 'שאלות ופניות', icon: 'messages' },
 ];
@@ -53,6 +54,7 @@ const SEARCH_ITEMS = [
   { label: 'מעקב מכרזים', href: '/admin/auctions' },
   { label: 'העלאה למכירה', href: '/admin/marketplace' },
   { label: 'מאגר רכבים', href: '/admin/inventory' },
+  { label: 'רכבים בהמלצה', href: '/recommended' },
   { label: 'דוחות ותשלומים', href: '/reports' },
   { label: 'שאלות ופניות', href: '/messages' },
   { label: 'הגדרות חשבון', href: '/settings' },
