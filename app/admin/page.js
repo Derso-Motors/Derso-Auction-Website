@@ -40,6 +40,7 @@ export default async function AdminPage() {
     { href: '/admin/marketplace', icon: '🏪', label: 'העלאה למכירה', desc: 'BidSpirit → Facebook Marketplace' },
     { href: '/admin/inventory', icon: '📦', label: 'מאגר רכבים', desc: 'מאגר פנימי לשיחות אפיון', count: undefined },
     { href: '/admin/broadcasts', icon: '📡', label: 'שידורים', desc: `${activeBroadcastSubs.length} מנויים · ₪${broadcastRevenue.toLocaleString('he-IL')} בחודש`, count: activeBroadcastSubs.length },
+    { href: '/admin/tasks', icon: '🗓️', label: 'משימות והיום', desc: 'פגישות היום, משימות ותזכורות' },
   ];
 
   return (

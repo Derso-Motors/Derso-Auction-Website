@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { processDueItems } from '../../../../lib/broadcast';
+import { processDueItems, processTaskReminders } from '../../../../lib/broadcast';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,5 +19,6 @@ export async function GET(req) {
 
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey, { auth: { persistSession: false } });
   const sent = await processDueItems(supabase);
-  return Response.json({ ok: true, sent });
+  const reminders = await processTaskReminders(supabase);
+  return Response.json({ ok: true, sent, reminders });
 }
