@@ -753,3 +753,13 @@ label { display: block; font-size: 11.5px; font-weight: 600; margin-bottom: 5px;
   position: sticky; top: 0; z-index: 10;
 }
 .legal-public-main { max-width: 860px; margin: 0 auto; padding: 28px 18px 60px; }
+
+/* ── Password visibility toggle ────────────────────────────────────────────── */
+.pass-wrap { position: relative; }
+.pass-wrap input { width: 100%; padding-left: 40px; }
+.pass-eye {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted-dim); cursor: pointer; padding: 4px;
+  display: flex; align-items: center;
+}
+.pass-eye:hover { color: var(--primary); }

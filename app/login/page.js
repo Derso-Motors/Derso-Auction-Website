@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../lib/supabase-client';
 
@@ -15,6 +15,17 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPass, setShowPass] = useState(false);
+  const [remember, setRemember] = useState(false);
+  const [agree, setAgree] = useState(false);
+
+  // Prefill a remembered email
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('derso_saved_email');
+      if (saved) { setEmail(saved); setRemember(true); }
+    } catch {}
+  }, []);
   const [googleLoading, setGoogleLoading] = useState(false);
 
   async function signInWithGoogle() {
@@ -47,13 +58,18 @@ export default function LoginPage() {
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) { setError('פרטי התחברות שגויים'); return; }
+        try {
+          if (remember) localStorage.setItem('derso_saved_email', email);
+          else localStorage.removeItem('derso_saved_email');
+        } catch {}
         router.push('/');
         router.refresh();
       } else {
         if (password.length < 8) { setError('סיסמה חייבת להכיל לפחות 8 תווים'); return; }
+        if (!agree) { setError('כדי להירשם יש לאשר את תנאי השימוש, מדיניות הפרטיות והסרת האחריות'); return; }
         const { error } = await supabase.auth.signUp({
           email, password,
-          options: { data: { full_name: fullName, phone } },
+          options: { data: { full_name: fullName, phone, accepted_terms: true, accepted_terms_at: new Date().toISOString() } },
         });
         if (error) { setError('שגיאה בהרשמה. נסה שוב מאוחר יותר.'); return; }
         // WhatsApp welcome + verification note (best effort, non-blocking)
@@ -136,13 +152,35 @@ export default function LoginPage() {
             {mode !== 'forgot' && (
               <div className="field">
                 <label>סיסמה</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required dir="ltr" minLength={mode === 'signup' ? 8 : undefined} placeholder="••••••••" />
+                <div className="pass-wrap">
+                  <input type={showPass ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required dir="ltr" minLength={mode === 'signup' ? 8 : undefined} placeholder="••••••••" />
+                  <button type="button" className="pass-eye" onClick={() => setShowPass(!showPass)} aria-label={showPass ? 'הסתרת סיסמה' : 'הצגת סיסמה'} title={showPass ? 'הסתרת סיסמה' : 'הצגת סיסמה'}>
+                    {showPass ? (
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    ) : (
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
             {mode === 'login' && (
-              <div style={{ textAlign: 'left', marginTop: -6, marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: -6, marginBottom: 8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--muted)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} style={{ width: 'auto' }} />
+                  זכור אותי
+                </label>
                 <a style={{ color: 'var(--muted-dim)', cursor: 'pointer', fontSize: 12.5 }} onClick={() => { setMode('forgot'); setError(''); setInfo(''); }}>שכחת סיסמה?</a>
               </div>
+            )}
+            {mode === 'signup' && (
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--muted)', cursor: 'pointer', margin: '2px 0 8px', lineHeight: 1.5 }}>
+                <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} required style={{ width: 'auto', marginTop: 3 }} />
+                <span>
+                  קראתי ואני מסכים/ה ל<a href="/terms" target="_blank" style={{ color: 'var(--accent)' }}>תנאי השימוש</a>, ל<a href="/privacy" target="_blank" style={{ color: 'var(--accent)' }}>מדיניות הפרטיות</a> ול<a href="/disclaimer" target="_blank" style={{ color: 'var(--accent)' }}>הסרת האחריות</a>,
+                  ובכלל זה: זכות הפדיון של החייב וסעד בלעדי של השבת דמי השירות בביטול עסקה, מכר רכבים במצבם (AS-IS) ותקרת האחריות.
+                </span>
+              </label>
             )}
             <button className="btn" style={{ width: '100%', marginTop: 6 }} disabled={loading}>
               {loading ? 'רגע...' : mode === 'login' ? 'התחברות' : mode === 'forgot' ? 'שליחת קישור לאיפוס' : 'הרשמה'}
