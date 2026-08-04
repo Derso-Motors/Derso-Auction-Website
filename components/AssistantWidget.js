@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-const HELLO = { role: 'bot', text: 'היי! 👋 אני העוזר האישי שלך.\nכתוב לי משפט אחד ואני אדאג לשאר, למשל:\n• "פגישה עם דני מחר ב-16:00"\n• "תזכיר לי להתקשר לראול ב-18:00"\n• "רשום שהחייב רוצה לפדות"\n• "מה יש לי היום?"' };
+const HELLO_ADMIN = { role: 'bot', text: 'היי! 👋 אני העוזר האישי שלך.\nכתוב לי משפט אחד ואני אדאג לשאר, למשל:\n• "פגישה עם דני מחר ב-16:00"\n• "תזכיר לי להתקשר לראול ב-18:00"\n• "רשום שהחייב רוצה לפדות"\n• "מה יש לי היום?"' };
+const HELLO_CLIENT = { role: 'bot', text: 'היי! 👋 אני העוזר של דרסו.\nאני כאן לשאלות על החשבון שלך:\n• "מה הסטטוס של הרכב שלי?"\n• "מתי הפגישה הבאה שלי?"\n• "כמה עולה בדיקת רכב?"\n• "כמה קרדיטים יש לי?"' };
 
-export default function AssistantWidget() {
+export default function AssistantWidget({ isAdmin = false }) {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState([HELLO]);
+  const [messages, setMessages] = useState([isAdmin ? HELLO_ADMIN : HELLO_CLIENT]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const bottomRef = useRef(null);

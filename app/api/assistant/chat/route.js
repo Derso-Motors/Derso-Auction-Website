@@ -96,13 +96,20 @@ export async function POST(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ reply: 'צריך להתחבר קודם 🙂' }, { status: 401 });
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') return Response.json({ reply: 'העוזר זמין למנהל בלבד' }, { status: 403 });
+  const { data: p } = await supabase.from('profiles').select('role, full_name, credits').eq('id', user.id).single();
+  const isAdmin = p?.role === 'admin';
 
   let body;
   try { body = await req.json(); } catch { return Response.json({ reply: 'לא הבנתי 🤔' }, { status: 400 }); }
   const text = (body?.message || '').trim();
   if (!text) return Response.json({ reply: 'כתוב לי משהו 🙂' });
+
+  // ── Client mode: answers ONLY from the signed-in client's own data.
+  // The queries run with the client's session, so RLS physically limits every
+  // row to their account — other clients' data cannot be returned.
+  if (!isAdmin) {
+    return clientAnswer(supabase, user, p, text);
+  }
 
   // "What's on today?"
   if (/^(מה יש( לי)?( היום)?|היום\??|הלו"ז|מה הלו"ז)/.test(text)) {
@@ -150,4 +157,83 @@ export async function POST(req) {
       (parsed.due_at ? `\n⏰ אזכיר לך בוואטסאפ ב-${fmtWhen(parsed.due_at)}` : '') +
       `\nרואים הכל בעמוד "משימות והיום"`,
   });
+}
+
+
+/* ── Client service mode ────────────────────────────────────────────────────── */
+
+const STAGES = ['זכייה במכרז', 'תשלום למכרז', 'שחרור הרכב', 'העברת בעלות', 'שינוע הרכב', 'מסירה ללקוח'];
+const PRICES =
+  'המחירון שלנו:\n' +
+  '• בדיקת "טופס סליקה" — 350 ₪\n' +
+  '• סרטון מנוע רץ + טופס סליקה — 995 ₪\n' +
+  '• דמי ליווי לרכישה — 3,500 ₪';
+
+async function clientAnswer(supabase, user, profile, text) {
+  // Everything below is RLS-scoped to this client only.
+  const [{ data: cars }, { data: meetings }, { data: orders }, { data: recLists }] = await Promise.all([
+    supabase.from('cars').select('title, year, current_stage, won_price').eq('client_id', user.id).limit(10),
+    supabase.from('meetings').select('title, scheduled_at, location').eq('client_id', user.id).gte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5),
+    supabase.from('report_orders').select('status, created_at').eq('client_id', user.id).order('created_at', { ascending: false }).limit(5),
+    supabase.from('recommendation_lists').select('recommended_cars(title, client_interest)').eq('client_id', user.id),
+  ]);
+
+  const carLines = (cars || []).map((c) => {
+    const stage = c.current_stage >= 6 ? 'הושלם ✅' : (STAGES[(c.current_stage || 1) - 1] || 'בתהליך');
+    return `🚗 ${c.title}${c.year ? ` (${c.year})` : ''} — שלב נוכחי: ${stage}`;
+  });
+  const meetLines = (meetings || []).map((m) => `📅 ${fmtWhen(m.scheduled_at)} — ${m.title}${m.location ? ` (${m.location})` : ''}`);
+  const recCars = (recLists || []).flatMap((l) => l.recommended_cars || []);
+
+  // AI mode: answer from this context only, with hard guardrails.
+  const key = process.env.OPENROUTER_API_KEY;
+  if (key) {
+    const context =
+      `שם הלקוח: ${profile?.full_name || ''}\n` +
+      `יתרת קרדיטים: ₪${Number(profile?.credits || 0).toLocaleString('he-IL')}\n` +
+      `הרכבים שלו בתהליך:\n${carLines.join('\n') || '(אין)'}\n` +
+      `הפגישות הקרובות שלו:\n${meetLines.join('\n') || '(אין)'}\n` +
+      `הזמנות דוחות: ${(orders || []).length}\n` +
+      `רכבים בהמלצה עבורו: ${recCars.length}\n${PRICES}\n` +
+      `מידע כללי: שחרור רכב אחרי זכייה תלוי בכונס הנכסים ואורך בדרך כלל מספר ימי עסקים עד כשבועיים; שלבי הליווי הם: ${STAGES.join(' ← ')}.`;
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
+          messages: [{ role: 'user', content:
+            `אתה נציג שירות של "דרסו — בית ליווי מקצועי למכרזים" בצ'אט האזור האישי.\n` +
+            `הנתונים של הלקוח המחובר (אלה הנתונים היחידים שמותר להשתמש בהם):\n${context}\n\n` +
+            `שאלת הלקוח: "${text}"\n\n` +
+            `חוקים מחייבים: ענה רק מהנתונים למעלה. לעולם אל תמציא מידע, אל תזכיר לקוחות אחרים ואל תמסור עליהם דבר. אל תבטיח הבטחות (מחירי זכייה, מועדים מדויקים, תוצאות). אם אינך יודע — הפנה לכתוב לנו בעמוד "שאלות ופניות" או בטלפון 055-950-6913. השב בעברית, קצר וחם.` }],
+          temperature: 0.3, max_tokens: 300,
+        }),
+      });
+      const j = await res.json();
+      const out = j?.choices?.[0]?.message?.content?.trim();
+      if (out) return Response.json({ reply: out });
+    } catch {}
+  }
+
+  // Fallback: keyword answers from the same RLS-scoped data.
+  if (/רכב|סטטוס|שחרור|איפה|מתי/.test(text) && carLines.length) {
+    return Response.json({ reply: `הרכבים שלך:\n${carLines.join('\n')}\n\nשחרור רכב תלוי בכונס ואורך בדרך כלל מספר ימי עסקים. לפרטים מדויקים — כתוב לנו בהודעות 🙂` });
+  }
+  if (/פגיש/.test(text)) {
+    return Response.json({ reply: meetLines.length ? `הפגישות הקרובות שלך:\n${meetLines.join('\n')}` : 'אין לך פגישות קרובות. רוצה לקבוע? כתוב לנו בעמוד "שאלות ופניות" 🙂' });
+  }
+  if (/מחיר|עולה|כמה|תשלום/.test(text)) {
+    return Response.json({ reply: PRICES + '\n\nיתרת הקרדיטים שלך: ₪' + Number(profile?.credits || 0).toLocaleString('he-IL') });
+  }
+  if (/קרדיט/.test(text)) {
+    return Response.json({ reply: `יתרת הקרדיטים שלך: ₪${Number(profile?.credits || 0).toLocaleString('he-IL')}` });
+  }
+  if (/דוח/.test(text)) {
+    return Response.json({ reply: (orders || []).length ? `יש לך ${(orders || []).length} הזמנות דוחות. את הסטטוס המלא רואים בעמוד "דוחות ותשלומים".` : 'עוד לא הזמנת דוחות. אפשר להזמין בעמוד "דוחות ותשלומים" 🙂' });
+  }
+  if (/המלצ/.test(text)) {
+    return Response.json({ reply: recCars.length ? `יש ${recCars.length} רכבים בעמוד "רכבים בהמלצה" שלך — שווה להציץ ולסמן מה מעניין 🚗` : 'עוד אין רכבים בהמלצה — ברגע שנמצא התאמה היא תופיע שם.' });
+  }
+  return Response.json({ reply: 'אשמח לעזור! אפשר לשאול אותי על: הרכבים שלך והשלב שלהם 🚗, הפגישות שלך 📅, מחירים 💰, קרדיטים, דוחות ורכבים בהמלצה.\nלשאלה מורכבת — כתוב לנו בעמוד "שאלות ופניות" ונחזור אליך.' });
 }

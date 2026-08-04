@@ -251,7 +251,7 @@ export default function Shell({ children, active }) {
 
       <main className="main">{children}</main>
 
-      {isAdmin && <AssistantWidget />}
+      <AssistantWidget isAdmin={isAdmin} />
 
       <footer className="app-footer">
         <div className="app-footer-links">
