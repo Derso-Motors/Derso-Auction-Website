@@ -67,7 +67,7 @@ const SEARCH_ITEMS = [
   { label: 'הגדרות חשבון', href: '/settings' },
 ];
 
-function SearchBar() {
+function SearchBar({ isAdmin }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const router = useRouter();
@@ -86,9 +86,11 @@ function SearchBar() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  // Clients only ever see client pages in the search results.
+  const visible = isAdmin ? SEARCH_ITEMS : SEARCH_ITEMS.filter(i => !i.href.startsWith('/admin'));
   const filtered = query
-    ? SEARCH_ITEMS.filter(i => i.label.includes(query) || i.href.includes(query))
-    : SEARCH_ITEMS;
+    ? visible.filter(i => i.label.includes(query) || i.href.includes(query))
+    : visible;
 
   return (
     <div className="topbar-search" ref={wrapRef} style={{ position: 'relative' }} onClick={() => setOpen(true)}>
@@ -211,7 +213,7 @@ export default function Shell({ children, active }) {
     <div className="shell">
       <header className="topbar">
         <div className="topbar-right">
-          <SearchBar />
+          <SearchBar isAdmin={isAdmin} />
         </div>
         <div className="topbar-brand">דרסו · אזור אישי</div>
         <div className="topbar-left">
