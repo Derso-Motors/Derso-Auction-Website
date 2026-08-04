@@ -15,8 +15,10 @@ async function deleteOrder(formData) {
   const { supabase, user } = await requireUser();
   const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (p?.role !== 'admin') redirect('/');
-  await supabase.from('report_orders').delete().eq('id', formData.get('id'));
+  const { error } = await supabase.from('report_orders').delete().eq('id', formData.get('id'));
+  if (error) redirect('/admin/orders?err=' + encodeURIComponent('מחיקת ההזמנה נכשלה'));
   revalidatePath('/admin/orders');
+  redirect('/admin/orders?ok=' + encodeURIComponent('ההזמנה נמחקה ✓'));
 }
 
 async function updateOrderStatus(formData) {
@@ -25,15 +27,16 @@ async function updateOrderStatus(formData) {
   const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (p?.role !== 'admin') redirect('/');
   const status = formData.get('status');
-  if (!ALLOWED_STATUSES.includes(status)) return;
+  if (!ALLOWED_STATUSES.includes(status)) redirect('/admin/orders?err=' + encodeURIComponent('סטטוס לא חוקי'));
   const patch = { status };
   const fileUrl = formData.get('file_url');
   if (fileUrl) {
-    if (!fileUrl.startsWith('https://')) return;
+    if (!fileUrl.startsWith('https://')) redirect('/admin/orders?err=' + encodeURIComponent('קישור הקובץ חייב להתחיל ב-https://'));
     patch.file_url = fileUrl;
   }
   const orderId = formData.get('order_id');
-  await supabase.from('report_orders').update(patch).eq('id', orderId);
+  const { error } = await supabase.from('report_orders').update(patch).eq('id', orderId);
+  if (error) redirect('/admin/orders?err=' + encodeURIComponent('עדכון ההזמנה נכשל'));
 
   if (['delivered', 'paid'].includes(status)) {
     const { data: order } = await supabase.from('report_orders').select('report_type, profiles(full_name, phone)').eq('id', orderId).single();
@@ -47,6 +50,7 @@ async function updateOrderStatus(formData) {
   }
 
   revalidatePath('/admin/orders');
+  redirect('/admin/orders?ok=' + encodeURIComponent('סטטוס ההזמנה עודכן ✓'));
 }
 
 export default async function OrdersListPage() {

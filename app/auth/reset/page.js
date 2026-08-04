@@ -23,7 +23,7 @@ export default function ResetPasswordPage() {
     const { error: err } = await supabase.auth.updateUser({ password });
     setLoading(false);
     if (err) { setError('הקישור פג תוקף או שאינו תקין — בקש קישור איפוס חדש מדף ההתחברות.'); return; }
-    router.push('/');
+    router.push('/?ok=' + encodeURIComponent('הסיסמה עודכנה ✓'));
     router.refresh();
   }
 

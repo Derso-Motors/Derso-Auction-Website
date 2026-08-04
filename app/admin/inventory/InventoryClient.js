@@ -254,6 +254,13 @@ export default function InventoryClient({ initialCars, clients = [] }) {
   const [filter, setFilter] = useState('available');
   const [sendInitial, setSendInitial] = useState(null); // null = closed
   const [sentMsg, setSentMsg] = useState('');
+  const [toastErr, setToastErr] = useState(false);
+
+  function showToast(msg, isErr = false) {
+    setToastErr(isErr);
+    setSentMsg(msg);
+    setTimeout(() => setSentMsg(''), 4000);
+  }
 
   function openSendForCar(car) {
     setSendInitial({
@@ -277,7 +284,9 @@ export default function InventoryClient({ initialCars, clients = [] }) {
   async function remove(car) {
     if (!window.confirm(`למחוק את ${car.make} ${car.model} מהמאגר? פעולה זו אינה הפיכה.`)) return;
     const supabase = createClient();
-    await supabase.from('inventory_cars').delete().eq('id', car.id);
+    const { error } = await supabase.from('inventory_cars').delete().eq('id', car.id);
+    if (error) { showToast('❌ מחיקת הרכב נכשלה. נסה שוב.', true); return; }
+    showToast(`🗑️ ${car.make} ${car.model} נמחק מהמאגר`);
     reload();
   }
 
@@ -285,9 +294,11 @@ export default function InventoryClient({ initialCars, clients = [] }) {
     const toSold = car.status !== 'sold';
     if (!window.confirm(toSold ? `לסמן את ${car.make} ${car.model} כנמכר?` : `להחזיר את ${car.make} ${car.model} למלאי?`)) return;
     const supabase = createClient();
-    await supabase.from('inventory_cars')
+    const { error } = await supabase.from('inventory_cars')
       .update({ status: toSold ? 'sold' : 'available', sold_at: toSold ? new Date().toISOString() : null })
       .eq('id', car.id);
+    if (error) { showToast('❌ עדכון הסטטוס נכשל. נסה שוב.', true); return; }
+    showToast(toSold ? `✅ ${car.make} ${car.model} סומן כנמכר` : `↩️ ${car.make} ${car.model} הוחזר למלאי`);
     reload();
   }
 
@@ -370,12 +381,12 @@ export default function InventoryClient({ initialCars, clients = [] }) {
         </button>
       </div>
 
-      {sentMsg && <div className="inv-toast">{sentMsg}</div>}
+      {sentMsg && <div className={`inv-toast ${toastErr ? 'toast-err' : ''}`}>{sentMsg}</div>}
 
       {wizardOpen && (
         <AddWizard
           onClose={() => setWizardOpen(false)}
-          onSaved={() => { setWizardOpen(false); reload(); }}
+          onSaved={() => { setWizardOpen(false); showToast('✅ הרכב נוסף למאגר'); reload(); }}
         />
       )}
       {sendInitial !== null && (
@@ -385,8 +396,7 @@ export default function InventoryClient({ initialCars, clients = [] }) {
           onClose={() => setSendInitial(null)}
           onSent={() => {
             setSendInitial(null);
-            setSentMsg('✅ הרכב נשלח ללקוח והתווסף לעמוד "רכבים בהמלצה" שלו');
-            setTimeout(() => setSentMsg(''), 4000);
+            showToast('✅ הרכב נשלח ללקוח והתווסף לעמוד "רכבים בהמלצה" שלו');
           }}
         />
       )}

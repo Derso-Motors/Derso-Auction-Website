@@ -45,14 +45,17 @@ async function addTask(formData) {
   const time = formData.get('due_time');
   let due = null;
   if (date) due = new Date(`${date}T${time || '09:00'}:00+03:00`).toISOString();
-  await supabase.from('admin_tasks').insert({
-    kind: formData.get('kind') === 'note' ? 'note' : 'task',
+  const kind = formData.get('kind') === 'note' ? 'note' : 'task';
+  const { error } = await supabase.from('admin_tasks').insert({
+    kind,
     title: formData.get('title'),
     details: formData.get('details') || null,
     due_at: due,
     remind: formData.get('remind') === 'on' && !!due,
   });
+  if (error) redirect(PAGE + '?err=' + encodeURIComponent('ההוספה נכשלה'));
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent(kind === 'note' ? 'ההערה נוספה ✓' : 'המשימה נוספה ✓'));
 }
 
 async function toggleDone(formData) {
@@ -60,22 +63,28 @@ async function toggleDone(formData) {
   const supabase = await requireAdmin();
   const id = formData.get('id');
   const { data: t } = await supabase.from('admin_tasks').select('done').eq('id', id).single();
-  await supabase.from('admin_tasks').update({ done: !t?.done }).eq('id', id);
+  const { error } = await supabase.from('admin_tasks').update({ done: !t?.done }).eq('id', id);
+  if (error) redirect(PAGE + '?err=' + encodeURIComponent('עדכון הסטטוס נכשל'));
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent(!t?.done ? 'סומן כבוצע ✓' : 'הוחזר לפתוח ✓'));
 }
 
 async function deleteTask(formData) {
   'use server';
   const supabase = await requireAdmin();
-  await supabase.from('admin_tasks').delete().eq('id', formData.get('id'));
+  const { error } = await supabase.from('admin_tasks').delete().eq('id', formData.get('id'));
+  if (error) redirect(PAGE + '?err=' + encodeURIComponent('המחיקה נכשלה'));
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent('הפריט נמחק ✓'));
 }
 
 async function saveOwnerPhone(formData) {
   'use server';
   const supabase = await requireAdmin();
-  await supabase.from('broadcast_settings').update({ owner_phone: formData.get('phone') || null }).eq('id', 1);
+  const { error } = await supabase.from('broadcast_settings').update({ owner_phone: formData.get('phone') || null }).eq('id', 1);
+  if (error) redirect(PAGE + '?err=' + encodeURIComponent('שמירת המספר נכשלה'));
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent('מספר הטלפון נשמר ✓'));
 }
 
 /* ── Page ───────────────────────────────────────────────────────────────────── */

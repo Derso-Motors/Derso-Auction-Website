@@ -7,6 +7,7 @@ export default function Chat({ clientId, initialMessages, senderRole = 'client' 
   const [messages, setMessages] = useState(initialMessages);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -33,12 +34,18 @@ export default function Chat({ clientId, initialMessages, senderRole = 'client' 
     e.preventDefault();
     if (!body.trim()) return;
     setSending(true);
+    setSendError('');
     const supabase = createClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('messages')
       .insert({ client_id: clientId, sender_role: senderRole, body: body.trim() })
       .select()
       .single();
+    if (error) {
+      setSendError('שליחת ההודעה נכשלה — נסו שוב');
+      setSending(false);
+      return;
+    }
     if (data) setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]));
     setBody('');
     setSending(false);
@@ -60,6 +67,7 @@ export default function Chat({ clientId, initialMessages, senderRole = 'client' 
         ))}
         <div ref={bottomRef} />
       </div>
+      {sendError && <div className="error-msg">{sendError}</div>}
       <form onSubmit={send} className="row">
         <input value={body} onChange={(e) => setBody(e.target.value)} placeholder="כתיבת הודעה..." />
         <button className="btn" disabled={sending || !body.trim()} style={{ whiteSpace: 'nowrap' }}>שליחה</button>

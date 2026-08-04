@@ -19,29 +19,42 @@ async function grantCredits(formData) {
   const supabase = await requireAdmin();
   const clientId = formData.get('client_id');
   const amount = Number(formData.get('amount'));
-  const { data: p } = await supabase.from('profiles').select('credits').eq('id', clientId).single();
-  await supabase.from('profiles').update({ credits: Number(p?.credits || 0) + amount }).eq('id', clientId);
-  await supabase.from('credit_transactions').insert({
+  const P = '/admin/clients';
+  const { data: p, error: pErr } = await supabase.from('profiles').select('credits').eq('id', clientId).single();
+  if (pErr) redirect(P + '?err=' + encodeURIComponent('שגיאה בטעינת פרטי הלקוח'));
+  const { error: updErr } = await supabase.from('profiles').update({ credits: Number(p?.credits || 0) + amount }).eq('id', clientId);
+  if (updErr) redirect(P + '?err=' + encodeURIComponent('הזיכוי נכשל'));
+  const { error: txErr } = await supabase.from('credit_transactions').insert({
     client_id: clientId, amount, reason: formData.get('reason') || 'זיכוי ידני',
   });
-  revalidatePath('/admin/clients');
+  if (txErr) redirect(P + '?err=' + encodeURIComponent('הזיכוי בוצע אך רישום התנועה נכשל'));
+  revalidatePath(P);
+  redirect(P + '?ok=' + encodeURIComponent(`זוכו ₪${amount.toLocaleString()} ✓`));
 }
 
 async function deleteClient(formData) {
   'use server';
   const supabase = await requireAdmin();
   const id = formData.get('id');
-  await supabase.from('messages').delete().eq('client_id', id);
-  await supabase.from('car_updates').delete().in('car_id', (await supabase.from('cars').select('id').eq('client_id', id)).data?.map(c => c.id) || []);
-  await supabase.from('car_stages').delete().in('car_id', (await supabase.from('cars').select('id').eq('client_id', id)).data?.map(c => c.id) || []);
-  await supabase.from('cars').delete().eq('client_id', id);
-  await supabase.from('recommended_cars').delete().in('list_id', (await supabase.from('recommendation_lists').select('id').eq('client_id', id)).data?.map(l => l.id) || []);
-  await supabase.from('recommendation_lists').delete().eq('client_id', id);
-  await supabase.from('report_orders').delete().eq('client_id', id);
-  await supabase.from('credit_transactions').delete().eq('client_id', id);
-  await supabase.from('meetings').delete().eq('client_id', id);
-  await supabase.from('profiles').delete().eq('id', id);
-  revalidatePath('/admin/clients');
+  const P = '/admin/clients';
+  const carIds = (await supabase.from('cars').select('id').eq('client_id', id)).data?.map(c => c.id) || [];
+  const listIds = (await supabase.from('recommendation_lists').select('id').eq('client_id', id)).data?.map(l => l.id) || [];
+  const results = [
+    await supabase.from('messages').delete().eq('client_id', id),
+    await supabase.from('car_updates').delete().in('car_id', carIds),
+    await supabase.from('car_stages').delete().in('car_id', carIds),
+    await supabase.from('cars').delete().eq('client_id', id),
+    await supabase.from('recommended_cars').delete().in('list_id', listIds),
+    await supabase.from('recommendation_lists').delete().eq('client_id', id),
+    await supabase.from('report_orders').delete().eq('client_id', id),
+    await supabase.from('credit_transactions').delete().eq('client_id', id),
+    await supabase.from('meetings').delete().eq('client_id', id),
+  ];
+  if (results.some(r => r.error)) redirect(P + '?err=' + encodeURIComponent('מחיקת הנתונים המשויכים נכשלה — הלקוח לא נמחק'));
+  const { error } = await supabase.from('profiles').delete().eq('id', id);
+  if (error) redirect(P + '?err=' + encodeURIComponent('מחיקת הלקוח נכשלה'));
+  revalidatePath(P);
+  redirect(P + '?ok=' + encodeURIComponent('הלקוח נמחק ✓'));
 }
 
 export default async function ClientsPage() {

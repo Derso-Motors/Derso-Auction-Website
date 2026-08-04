@@ -5,6 +5,7 @@ import { createClient } from '../lib/supabase-client';
 import { useEffect, useState, useRef } from 'react';
 import NotificationBell from './NotificationBell';
 import AssistantWidget from './AssistantWidget';
+import PageToast from './PageToast';
 
 const ICONS = {
   home: <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></>,
@@ -254,6 +255,7 @@ export default function Shell({ children, active }) {
       <main className="main">{children}</main>
 
       <AssistantWidget isAdmin={isAdmin} />
+      <PageToast />
 
       <footer className="app-footer">
         <div className="app-footer-links">

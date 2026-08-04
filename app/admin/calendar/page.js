@@ -1,10 +1,10 @@
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
 import { requireUser } from '../../../lib/supabase-server';
-import { timeAgo } from '../../../lib/utils';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { sendWhatsApp } from '../../../lib/whatsapp';
+import { timeAgo } from '../../../lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +26,7 @@ async function addMeeting(formData) {
   const clientName = isWalkIn ? (formData.get('client_name') || 'לקוח חד-פעמי') : null;
   const clientPhone = isWalkIn ? (formData.get('client_phone') || null) : null;
 
-  await supabase.from('meetings').insert({
+  const { error } = await supabase.from('meetings').insert({
     client_id: isWalkIn ? null : clientId,
     title,
     scheduled_at: scheduledAt.toISOString(),
@@ -34,6 +34,7 @@ async function addMeeting(formData) {
     client_name: clientName,
     client_phone: clientPhone,
   });
+  if (error) redirect('/admin/calendar?err=' + encodeURIComponent('שגיאה בקביעת הפגישה'));
 
   let phone = clientPhone;
   let name = clientName;
@@ -51,13 +52,16 @@ async function addMeeting(formData) {
   }
 
   revalidatePath('/admin/calendar');
+  redirect('/admin/calendar?ok=' + encodeURIComponent(phone ? 'הפגישה נקבעה ונשלחה הודעת וואטסאפ ✓' : 'הפגישה נקבעה ✓'));
 }
 
 async function deleteMeeting(formData) {
   'use server';
   const supabase = await requireAdmin();
-  await supabase.from('meetings').delete().eq('id', formData.get('id'));
+  const { error } = await supabase.from('meetings').delete().eq('id', formData.get('id'));
+  if (error) redirect('/admin/calendar?err=' + encodeURIComponent('שגיאה במחיקת הפגישה'));
   revalidatePath('/admin/calendar');
+  redirect('/admin/calendar?ok=' + encodeURIComponent('הפגישה נמחקה ✓'));
 }
 
 export default async function CalendarPage() {
@@ -83,7 +87,7 @@ export default async function CalendarPage() {
             {meetings?.length > 0 && (
               <div className="table-wrap">
                 <table className="data">
-                  <thead><tr><th>נושא</th><th>לקוח</th><th>תאריך</th><th>שעה</th><th>מתי</th><th>מיקום</th><th>סטטוס</th><th></th></tr></thead>
+                  <thead><tr><th>נושא</th><th>לקוח</th><th>תאריך</th><th>שעה</th><th>מיקום</th><th>סטטוס</th><th>לפני</th><th></th></tr></thead>
                   <tbody>
                     {meetings.map((m) => {
                       const d = new Date(m.scheduled_at);
@@ -96,9 +100,9 @@ export default async function CalendarPage() {
                           <td style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: 'var(--primary)' }}>
                             {d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                           </td>
-                          <td className="muted">{timeAgo(m.scheduled_at)}</td>
                           <td>{m.location || '—'}</td>
                           <td><span className={`badge ${isPast ? 'done' : 'in_progress'}`}>{isPast ? 'עבר' : 'מתוכנן'}</span></td>
+                          <td className="muted">{timeAgo(m.scheduled_at)}</td>
                           <td>
                             <form action={deleteMeeting}>
                               <input type="hidden" name="id" value={m.id} />

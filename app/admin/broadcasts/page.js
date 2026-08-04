@@ -23,8 +23,10 @@ async function togglePause() {
   'use server';
   const supabase = await requireAdmin();
   const { data: s } = await supabase.from('broadcast_settings').select('paused').eq('id', 1).single();
-  await supabase.from('broadcast_settings').update({ paused: !s?.paused }).eq('id', 1);
+  const { error } = await supabase.from('broadcast_settings').update({ paused: !s?.paused }).eq('id', 1);
+  if (error) redirect(PAGE + '?err=' + encodeURIComponent('שינוי מצב השידור נכשל'));
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent(s?.paused ? 'השידור הופעל מחדש ▶️' : 'השידור הושהה ⏸️'));
 }
 
 async function itemAction(formData) {
@@ -32,17 +34,33 @@ async function itemAction(formData) {
   const supabase = await requireAdmin();
   const id = formData.get('id');
   const act = formData.get('act');
-  if (act === 'hold')   await supabase.from('broadcast_queue').update({ status: 'held' }).eq('id', id).eq('status', 'pending');
-  if (act === 'resume') await supabase.from('broadcast_queue').update({ status: 'pending', scheduled_at: new Date().toISOString() }).eq('id', id).eq('status', 'held');
-  if (act === 'cancel') await supabase.from('broadcast_queue').update({ status: 'cancelled' }).eq('id', id).in('status', ['pending', 'held']);
+  let ok = '';
+  if (act === 'hold') {
+    const { error } = await supabase.from('broadcast_queue').update({ status: 'held' }).eq('id', id).eq('status', 'pending');
+    if (error) redirect(PAGE + '?err=' + encodeURIComponent('עצירת הרכב נכשלה'));
+    ok = 'הרכב הוחזק ⏸️';
+  }
+  if (act === 'resume') {
+    const { error } = await supabase.from('broadcast_queue').update({ status: 'pending', scheduled_at: new Date().toISOString() }).eq('id', id).eq('status', 'held');
+    if (error) redirect(PAGE + '?err=' + encodeURIComponent('חידוש הרכב נכשל'));
+    ok = 'הרכב חזר לתור ▶️';
+  }
+  if (act === 'cancel') {
+    const { error } = await supabase.from('broadcast_queue').update({ status: 'cancelled' }).eq('id', id).in('status', ['pending', 'held']);
+    if (error) redirect(PAGE + '?err=' + encodeURIComponent('ביטול השליחה נכשל'));
+    ok = 'השליחה בוטלה ✓';
+  }
   if (act === 'send_now') {
     const { data: item } = await supabase.from('broadcast_queue').select('*, profiles(phone)').eq('id', id).single();
-    if (item && ['pending', 'held'].includes(item.status) && item.profiles?.phone) {
-      const res = await sendWhatsApp(item.profiles.phone, carMessage(item));
-      await supabase.from('broadcast_queue').update({ status: 'sent', sent_at: new Date().toISOString(), wa_message_id: res.messageId || null }).eq('id', id);
-    }
+    if (!item || !['pending', 'held'].includes(item.status)) redirect(PAGE + '?err=' + encodeURIComponent('הרכב כבר לא ממתין לשליחה'));
+    if (!item.profiles?.phone) redirect(PAGE + '?err=' + encodeURIComponent('ללקוח אין טלפון בפרופיל — לא נשלח'));
+    const res = await sendWhatsApp(item.profiles.phone, carMessage(item));
+    const { error } = await supabase.from('broadcast_queue').update({ status: 'sent', sent_at: new Date().toISOString(), wa_message_id: res.messageId || null }).eq('id', id);
+    if (error) redirect(PAGE + '?err=' + encodeURIComponent('הרכב נשלח אך עדכון הסטטוס נכשל'));
+    ok = 'הרכב נשלח ללקוח 📤';
   }
   revalidatePath(PAGE);
+  redirect(PAGE + (ok ? '?ok=' + encodeURIComponent(ok) : ''));
 }
 
 async function clientBulkAction(formData) {
@@ -50,9 +68,19 @@ async function clientBulkAction(formData) {
   const supabase = await requireAdmin();
   const clientId = formData.get('client_id');
   const act = formData.get('act');
-  if (act === 'hold')   await supabase.from('broadcast_queue').update({ status: 'held' }).eq('client_id', clientId).eq('status', 'pending');
-  if (act === 'cancel') await supabase.from('broadcast_queue').update({ status: 'cancelled' }).eq('client_id', clientId).in('status', ['pending', 'held']);
+  let ok = '';
+  if (act === 'hold') {
+    const { error } = await supabase.from('broadcast_queue').update({ status: 'held' }).eq('client_id', clientId).eq('status', 'pending');
+    if (error) redirect(PAGE + '?err=' + encodeURIComponent('עצירת הרכבים ללקוח נכשלה'));
+    ok = 'כל הרכבים של הלקוח הוחזקו ⏸️';
+  }
+  if (act === 'cancel') {
+    const { error } = await supabase.from('broadcast_queue').update({ status: 'cancelled' }).eq('client_id', clientId).in('status', ['pending', 'held']);
+    if (error) redirect(PAGE + '?err=' + encodeURIComponent('ביטול הרכבים ללקוח נכשל'));
+    ok = 'כל הרכבים של הלקוח בוטלו ✓';
+  }
   revalidatePath(PAGE);
+  redirect(PAGE + (ok ? '?ok=' + encodeURIComponent(ok) : ''));
 }
 
 async function processNow() {
@@ -60,6 +88,7 @@ async function processNow() {
   const supabase = await requireAdmin();
   await processDueItems(supabase);
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent('התור עובד — רכבים שהגיע זמנם נשלחו 🔄'));
 }
 
 async function instantSend(formData) {
@@ -78,26 +107,30 @@ async function instantSend(formData) {
     },
   };
   const { data: profile } = await supabase.from('profiles').select('phone').eq('id', clientId).single();
-  if (profile?.phone && item.title) {
-    const res = await sendWhatsApp(profile.phone, `⚡ התאמה מדויקת בשבילך!\n\n${carMessage(item)}`);
-    await supabase.from('broadcast_queue').insert({
-      client_id: clientId, title: item.title, details: item.details,
-      kind: 'instant', source: 'manual', status: 'sent', sent_at: new Date().toISOString(),
-      wa_message_id: res.messageId || null,
-    });
-  }
+  if (!item.title) redirect(PAGE + '?err=' + encodeURIComponent('חסר שם רכב — לא נשלח'));
+  if (!profile?.phone) redirect(PAGE + '?err=' + encodeURIComponent('ללקוח אין טלפון בפרופיל — לא נשלח'));
+  const res = await sendWhatsApp(profile.phone, `⚡ התאמה מדויקת בשבילך!\n\n${carMessage(item)}`);
+  const { error } = await supabase.from('broadcast_queue').insert({
+    client_id: clientId, title: item.title, details: item.details,
+    kind: 'instant', source: 'manual', status: 'sent', sent_at: new Date().toISOString(),
+    wa_message_id: res.messageId || null,
+  });
+  if (error) redirect(PAGE + '?err=' + encodeURIComponent('ההודעה נשלחה אך הרישום בארכיון נכשל'));
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent('הרכב נשלח ללקוח מיידית ⚡'));
 }
 
 async function addSubscriber(formData) {
   'use server';
   const supabase = await requireAdmin();
-  await supabase.from('broadcast_subscribers').upsert({
+  const { error } = await supabase.from('broadcast_subscribers').upsert({
     client_id: formData.get('client_id'),
     monthly_fee: formData.get('fee') ? Number(formData.get('fee')) : 20,
     active: true,
   }, { onConflict: 'client_id' });
+  if (error) redirect(PAGE + '?err=' + encodeURIComponent('הוספת המנוי נכשלה'));
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent('הלקוח נוסף לשידור ✓'));
 }
 
 async function toggleSubscriber(formData) {
@@ -105,23 +138,30 @@ async function toggleSubscriber(formData) {
   const supabase = await requireAdmin();
   const id = formData.get('id');
   const { data: s } = await supabase.from('broadcast_subscribers').select('active').eq('id', id).single();
-  await supabase.from('broadcast_subscribers').update({ active: !s?.active }).eq('id', id);
+  const { error } = await supabase.from('broadcast_subscribers').update({ active: !s?.active }).eq('id', id);
+  if (error) redirect(PAGE + '?err=' + encodeURIComponent('שינוי מצב המנוי נכשל'));
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent(s?.active ? 'המנוי הושבת ⏸️' : 'המנוי הופעל ▶️'));
 }
 
 async function removeSubscriber(formData) {
   'use server';
   const supabase = await requireAdmin();
-  await supabase.from('broadcast_subscribers').delete().eq('id', formData.get('id'));
+  const { error } = await supabase.from('broadcast_subscribers').delete().eq('id', formData.get('id'));
+  if (error) redirect(PAGE + '?err=' + encodeURIComponent('הסרת המנוי נכשלה'));
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent('המנוי הוסר מהשידור ✓'));
 }
 
 async function setDailyHour(formData) {
   'use server';
   const supabase = await requireAdmin();
   const h = Number(formData.get('hour'));
-  if (h >= 0 && h <= 23) await supabase.from('broadcast_settings').update({ daily_hour: h }).eq('id', 1);
+  if (!(h >= 0 && h <= 23)) redirect(PAGE + '?err=' + encodeURIComponent('שעה לא תקינה'));
+  const { error } = await supabase.from('broadcast_settings').update({ daily_hour: h }).eq('id', 1);
+  if (error) redirect(PAGE + '?err=' + encodeURIComponent('קביעת שעת השידור נכשלה'));
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent(`שעת השידור היומי נקבעה ל-${String(h).padStart(2, '0')}:00 ✓`));
 }
 
 // Send a follow-up about a car that was already sent, as a WhatsApp *reply*
@@ -131,12 +171,12 @@ async function sendCarUpdate(formData) {
   const supabase = await requireAdmin();
   const id = formData.get('id');
   const text = (formData.get('text') || '').trim();
-  if (!text) return;
+  if (!text) redirect(PAGE + '?err=' + encodeURIComponent('כתוב מה השתנה — העדכון לא נשלח'));
   const { data: item } = await supabase.from('broadcast_queue').select('*, profiles(phone)').eq('id', id).single();
-  if (item?.status === 'sent' && item.profiles?.phone) {
-    await sendWhatsApp(item.profiles.phone, `📢 עדכון לגבי הרכב:\n${text}`, { replyTo: item.wa_message_id || undefined });
-  }
+  if (!(item?.status === 'sent' && item.profiles?.phone)) redirect(PAGE + '?err=' + encodeURIComponent('אי אפשר לשלוח עדכון — הרכב לא נשלח או שאין טלפון ללקוח'));
+  await sendWhatsApp(item.profiles.phone, `📢 עדכון לגבי הרכב:\n${text}`, { replyTo: item.wa_message_id || undefined });
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent('העדכון נשלח ללקוח 📤'));
 }
 
 // "Delete": WhatsApp's API can't delete a delivered message, so we reply to the
@@ -146,11 +186,12 @@ async function retractCar(formData) {
   const supabase = await requireAdmin();
   const id = formData.get('id');
   const { data: item } = await supabase.from('broadcast_queue').select('*, profiles(phone)').eq('id', id).single();
-  if (item?.status === 'sent' && !item.retracted && item.profiles?.phone) {
-    await sendWhatsApp(item.profiles.phone, '🚫 הרכב הזה כבר לא רלוונטי — מתנצלים! ממשיכים לחפש בשבילך רכבים מתאימים 🚗', { replyTo: item.wa_message_id || undefined });
-    await supabase.from('broadcast_queue').update({ retracted: true }).eq('id', id);
-  }
+  if (!(item?.status === 'sent' && !item.retracted && item.profiles?.phone)) redirect(PAGE + '?err=' + encodeURIComponent('אי אפשר לבטל — הרכב כבר בוטל, לא נשלח או שאין טלפון ללקוח'));
+  await sendWhatsApp(item.profiles.phone, '🚫 הרכב הזה כבר לא רלוונטי — מתנצלים! ממשיכים לחפש בשבילך רכבים מתאימים 🚗', { replyTo: item.wa_message_id || undefined });
+  const { error } = await supabase.from('broadcast_queue').update({ retracted: true }).eq('id', id);
+  if (error) redirect(PAGE + '?err=' + encodeURIComponent('ההודעה נשלחה אך סימון הביטול נכשל'));
   revalidatePath(PAGE);
+  redirect(PAGE + '?ok=' + encodeURIComponent('הלקוח עודכן שהרכב לא רלוונטי 🚫'));
 }
 
 /* ── Page ───────────────────────────────────────────────────────────────────── */
@@ -244,9 +285,10 @@ export default async function BroadcastsPage({ searchParams }) {
                   <input type="hidden" name="client_id" value={clientId} /><input type="hidden" name="act" value="hold" />
                   <SubmitButton className="btn secondary small">⏸️ עצור הכל ללקוח</SubmitButton>
                 </form>
-                <form action={clientBulkAction}>
+                <form action={clientBulkAction} className="row" style={{ gap: 4, alignItems: 'center' }}>
                   <input type="hidden" name="client_id" value={clientId} /><input type="hidden" name="act" value="cancel" />
-                  <SubmitButton className="btn danger-outline small">🗑️ בטל הכל ללקוח</SubmitButton>
+                  <DeleteButton title="ביטול כל הרכבים הממתינים ללקוח" />
+                  <span className="muted" style={{ fontSize: 12 }}>בטל הכל ללקוח</span>
                 </form>
               </div>
               {group.items.map((item) => (
@@ -394,9 +436,10 @@ export default async function BroadcastsPage({ searchParams }) {
                                   <SubmitButton className="btn small">📤 שלח עדכון</SubmitButton>
                                 </form>
                               </details>
-                              <form action={retractCar}>
+                              <form action={retractCar} className="row" style={{ gap: 4, alignItems: 'center' }}>
                                 <input type="hidden" name="id" value={item.id} />
-                                <SubmitButton className="btn danger-outline small" title="שולח ללקוח תגובה על הודעת הרכב שהוא כבר לא רלוונטי">🚫 לא רלוונטי</SubmitButton>
+                                <DeleteButton title="שולח ללקוח תגובה על הודעת הרכב שהוא כבר לא רלוונטי" />
+                                <span className="muted" style={{ fontSize: 12 }}>לא רלוונטי</span>
                               </form>
                             </div>
                           )}

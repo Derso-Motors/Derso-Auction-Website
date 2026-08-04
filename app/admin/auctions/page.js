@@ -26,8 +26,10 @@ async function addAuction(formData) {
     closing_date: formData.get('closing_date') || null,
     status: 'submitted',
   };
-  await supabase.from('auctions').insert(row);
+  const { error } = await supabase.from('auctions').insert(row);
+  if (error) redirect('/admin/auctions?err=' + encodeURIComponent('הוספת המכרז נכשלה'));
   revalidatePath('/admin/auctions');
+  redirect('/admin/auctions?ok=' + encodeURIComponent('המכרז נוסף ✓'));
 }
 
 async function updateAuctionStatus(formData) {
@@ -36,12 +38,13 @@ async function updateAuctionStatus(formData) {
   const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (p?.role !== 'admin') redirect('/');
   const status = formData.get('status');
-  if (!AUCTION_STATUSES.includes(status)) return;
+  if (!AUCTION_STATUSES.includes(status)) redirect('/admin/auctions?err=' + encodeURIComponent('סטטוס לא תקין'));
   const patch = { status };
   const finalPrice = formData.get('final_price');
   if (finalPrice) patch.final_price = Number(finalPrice);
   const auctionId = formData.get('auction_id');
-  await supabase.from('auctions').update(patch).eq('id', auctionId);
+  const { error } = await supabase.from('auctions').update(patch).eq('id', auctionId);
+  if (error) redirect('/admin/auctions?err=' + encodeURIComponent('עדכון הסטטוס נכשל'));
 
   if (['won', 'lost', 'pending_release'].includes(status)) {
     const { data: auction } = await supabase.from('auctions').select('car_title, client_id, profiles(full_name, phone)').eq('id', auctionId).single();
@@ -55,6 +58,7 @@ async function updateAuctionStatus(formData) {
   }
 
   revalidatePath('/admin/auctions');
+  redirect('/admin/auctions?ok=' + encodeURIComponent('הסטטוס עודכן ✓'));
 }
 
 async function deleteAuction(formData) {
@@ -62,8 +66,10 @@ async function deleteAuction(formData) {
   const { supabase, user } = await requireUser();
   const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (p?.role !== 'admin') redirect('/');
-  await supabase.from('auctions').delete().eq('id', formData.get('id'));
+  const { error } = await supabase.from('auctions').delete().eq('id', formData.get('id'));
+  if (error) redirect('/admin/auctions?err=' + encodeURIComponent('מחיקת המכרז נכשלה'));
   revalidatePath('/admin/auctions');
+  redirect('/admin/auctions?ok=' + encodeURIComponent('המכרז נמחק ✓'));
 }
 
 export default async function AuctionsPage() {

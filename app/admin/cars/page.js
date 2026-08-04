@@ -11,6 +11,8 @@ export const dynamic = 'force-dynamic';
 
 const STAGES = ['זכייה במכרז', 'תשלום למכרז', 'שחרור הרכב', 'העברת בעלות', 'שינוע הרכב', 'מסירה ללקוח'];
 
+const P = '/admin/cars';
+
 async function requireAdmin() {
   const { supabase, user } = await requireUser();
   const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
@@ -22,7 +24,7 @@ async function addCar(formData) {
   'use server';
   const supabase = await requireAdmin();
   const clientId = formData.get('client_id');
-  await supabase.from('cars').insert({
+  const { error } = await supabase.from('cars').insert({
     client_id: clientId === '__walk_in__' ? null : clientId,
     client_name: clientId === '__walk_in__' ? (formData.get('client_name') || 'לקוח חד-פעמי') : null,
     client_phone: clientId === '__walk_in__' ? (formData.get('client_phone') || null) : null,
@@ -34,7 +36,9 @@ async function addCar(formData) {
     image_url: formData.get('image_url') || null,
     won_price: formData.get('won_price') ? Number(formData.get('won_price')) : null,
   });
-  revalidatePath('/admin/cars');
+  if (error) redirect(P + '?err=' + encodeURIComponent('הוספת הרכב נכשלה'));
+  revalidatePath(P);
+  redirect(P + '?ok=' + encodeURIComponent('הרכב נוסף ✓'));
 }
 
 async function advanceStage(formData) {
@@ -43,12 +47,25 @@ async function advanceStage(formData) {
   const carId = formData.get('car_id');
   const step = Number(formData.get('step_number'));
   const note = formData.get('note');
-  await supabase.from('car_stages').update({ status: 'done', completed_at: new Date().toISOString() }).eq('car_id', carId).lte('step_number', step);
-  await supabase.from('car_stages').update({ status: 'in_progress' }).eq('car_id', carId).eq('step_number', step + 1);
-  await supabase.from('cars').update({ current_stage: step + 1 }).eq('id', carId);
+
+  const { error: doneErr } = await supabase.from('car_stages').update({ status: 'done', completed_at: new Date().toISOString() })
+    .eq('car_id', carId).lte('step_number', step);
+  if (doneErr) redirect(P + '?err=' + encodeURIComponent('עדכון השלב נכשל'));
+  const { error: progErr } = await supabase.from('car_stages').update({ status: 'in_progress' })
+    .eq('car_id', carId).eq('step_number', step + 1);
+  if (progErr) redirect(P + '?err=' + encodeURIComponent('עדכון השלב הבא נכשל'));
+  const { error: carErr } = await supabase.from('cars').update({ current_stage: step + 1 }).eq('id', carId);
+  if (carErr) redirect(P + '?err=' + encodeURIComponent('עדכון הרכב נכשל'));
+
   const { data: { user } } = await supabase.auth.getUser();
   const { data: stage } = await supabase.from('car_stages').select('title').eq('car_id', carId).eq('step_number', step).single();
-  await supabase.from('car_updates').insert({ car_id: carId, author_id: user.id, stage_number: step, body: note?.trim() ? note.trim() : `השלב "${stage?.title}" הושלם` });
+  const { error: updErr } = await supabase.from('car_updates').insert({
+    car_id: carId,
+    author_id: user.id,
+    stage_number: step,
+    body: note?.trim() ? note.trim() : `השלב "${stage?.title}" הושלם`,
+  });
+  if (updErr) redirect(P + '?err=' + encodeURIComponent('רישום העדכון נכשל'));
 
   const { data: car } = await supabase.from('cars').select('title, client_id, client_phone, profiles(full_name, phone)').eq('id', carId).single();
   const phone = car?.profiles?.phone || car?.client_phone;
@@ -58,25 +75,36 @@ async function advanceStage(formData) {
     await sendWhatsApp(phone, msg);
   }
 
-  revalidatePath('/admin/cars');
+  revalidatePath(P);
+  redirect(P + '?ok=' + encodeURIComponent(`השלב "${stage?.title}" הושלם ✓`));
 }
 
 async function postUpdate(formData) {
   'use server';
   const supabase = await requireAdmin();
   const { data: { user } } = await supabase.auth.getUser();
-  await supabase.from('car_updates').insert({ car_id: formData.get('car_id'), author_id: user.id, body: formData.get('body') });
-  revalidatePath('/admin/cars');
+  const { error } = await supabase.from('car_updates').insert({
+    car_id: formData.get('car_id'),
+    author_id: user.id,
+    body: formData.get('body'),
+  });
+  if (error) redirect(P + '?err=' + encodeURIComponent('פרסום העדכון נכשל'));
+  revalidatePath(P);
+  redirect(P + '?ok=' + encodeURIComponent('העדכון פורסם ✓'));
 }
 
 async function deleteCar(formData) {
   'use server';
   const supabase = await requireAdmin();
   const id = formData.get('id');
-  await supabase.from('car_updates').delete().eq('car_id', id);
-  await supabase.from('car_stages').delete().eq('car_id', id);
-  await supabase.from('cars').delete().eq('id', id);
-  revalidatePath('/admin/cars');
+  const { error: updDelErr } = await supabase.from('car_updates').delete().eq('car_id', id);
+  if (updDelErr) redirect(P + '?err=' + encodeURIComponent('מחיקת הרכב נכשלה'));
+  const { error: stgDelErr } = await supabase.from('car_stages').delete().eq('car_id', id);
+  if (stgDelErr) redirect(P + '?err=' + encodeURIComponent('מחיקת הרכב נכשלה'));
+  const { error } = await supabase.from('cars').delete().eq('id', id);
+  if (error) redirect(P + '?err=' + encodeURIComponent('מחיקת הרכב נכשלה'));
+  revalidatePath(P);
+  redirect(P + '?ok=' + encodeURIComponent('הרכב נמחק ✓'));
 }
 
 export default async function CarsPage() {
@@ -105,29 +133,28 @@ export default async function CarsPage() {
               const nextStep = done < 6 ? done : null;
               return (
                 <div key={car.id} style={{ padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
-                  <div className="side-item" style={{ border: 'none', padding: 0 }}>
-                    <div className="side-item-content">
-                      <b>{car.title}</b>
-                      <span className="muted"> — {car.profiles?.full_name || car.client_name || 'ללא לקוח'}{car.client_phone ? ` (${car.client_phone})` : ''}</span>
+                  <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <b>{car.title}</b> <span className="muted">— {car.profiles?.full_name || car.client_name || 'ללא לקוח'}{car.client_phone ? ` (${car.client_phone})` : ''}</span>
                       <div className="muted">{done}/6 שלבים הושלמו {done < 6 ? `· הבא: ${stages[done]?.title}` : '· הושלם'}</div>
                       {car.won_price && <div className="muted" style={{ fontSize: 12 }}>₪{Number(car.won_price).toLocaleString()}</div>}
                     </div>
-                    <div className="side-item-actions">
+                    <div className="row" style={{ flexWrap: 'wrap', gap: 8, flexShrink: 0 }}>
+                      {nextStep !== null && (
+                        <form action={advanceStage} className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+                          <input type="hidden" name="car_id" value={car.id} />
+                          <input type="hidden" name="step_number" value={done} />
+                          <input name="note" placeholder="הערה (אופציונלי)" style={{ width: 160 }} />
+                          <SubmitButton className="btn small">סיום שלב: {stages[done]?.title}</SubmitButton>
+                        </form>
+                      )}
                       <form action={deleteCar}>
                         <input type="hidden" name="id" value={car.id} />
                         <DeleteButton title="מחיקת רכב" />
                       </form>
                     </div>
                   </div>
-                  {nextStep !== null && (
-                    <form action={advanceStage} className="row" style={{ marginTop: 8, flexWrap: 'wrap', gap: 6 }}>
-                      <input type="hidden" name="car_id" value={car.id} />
-                      <input type="hidden" name="step_number" value={done} />
-                      <input name="note" placeholder="הערה (אופציונלי)" style={{ width: 160 }} />
-                      <SubmitButton className="btn small">סיום שלב: {stages[done]?.title}</SubmitButton>
-                    </form>
-                  )}
-                  <form action={postUpdate} className="row" style={{ marginTop: 6, gap: 6 }}>
+                  <form action={postUpdate} className="row" style={{ marginTop: 8, gap: 6 }}>
                     <input type="hidden" name="car_id" value={car.id} />
                     <input name="body" placeholder="פרסום עדכון חופשי ללקוח..." required style={{ flex: 1 }} />
                     <SubmitButton className="btn small secondary">פרסום עדכון</SubmitButton>
@@ -142,7 +169,13 @@ export default async function CarsPage() {
           <div className="card">
             <h3>הוספת רכב שנזכה</h3>
             <form action={addCar}>
-              <div className="field"><label>לקוח</label><select name="client_id" required>{clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id}</option>)}<option value="__walk_in__">+ לקוח חד-פעמי (לא רשום)</option></select></div>
+              <div className="field">
+                <label>לקוח</label>
+                <select name="client_id" required>
+                  {clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id}</option>)}
+                  <option value="__walk_in__">+ לקוח חד-פעמי (לא רשום)</option>
+                </select>
+              </div>
               <div className="field"><label>שם לקוח (ללא רשום)</label><input name="client_name" placeholder="שם הלקוח" /></div>
               <div className="field"><label>טלפון</label><input name="client_phone" placeholder="050-1234567" dir="ltr" /></div>
               <div className="field"><label>שם הרכב</label><input name="title" required placeholder="סקודה אוקטביה 2021" /></div>

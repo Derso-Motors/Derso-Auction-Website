@@ -7,12 +7,27 @@ function fmt(n) { return n != null ? Number(n).toLocaleString('he-IL') : null; }
 
 export default function RecommendedClient({ initialCars }) {
   const [cars, setCars] = useState(initialCars);
+  const [toast, setToast] = useState(null);
+
+  function showToast(msg, isErr) {
+    setToast({ msg, isErr });
+    setTimeout(() => setToast(null), 3000);
+  }
 
   async function mark(car, interest) {
-    const next = car.client_interest === interest ? null : interest;
+    const prevInterest = car.client_interest;
+    const next = prevInterest === interest ? null : interest;
     setCars((prev) => prev.map((c) => (c.id === car.id ? { ...c, client_interest: next } : c)));
     const supabase = createClient();
-    await supabase.from('recommended_cars').update({ client_interest: next }).eq('id', car.id);
+    const { error } = await supabase.from('recommended_cars').update({ client_interest: next }).eq('id', car.id);
+    if (error) {
+      setCars((prev) => prev.map((c) => (c.id === car.id ? { ...c, client_interest: prevInterest } : c)));
+      showToast('שמירת הסימון נכשלה — נסה שוב', true);
+      return;
+    }
+    if (next === 'interested') showToast('סומן כמעניין ✓');
+    else if (next === 'not_interested') showToast('סומן כלא רלוונטי ✓');
+    else showToast('הסימון הוסר ✓');
   }
 
   if (!cars.length) {
@@ -20,6 +35,8 @@ export default function RecommendedClient({ initialCars }) {
   }
 
   return (
+    <>
+      {toast && <div className={`inv-toast${toast.isErr ? ' toast-err' : ''}`}>{toast.msg}</div>}
     <div className="inv-grid">
       {cars.map((car) => (
         <div key={car.id} className="inv-card">
@@ -65,5 +82,6 @@ export default function RecommendedClient({ initialCars }) {
         </div>
       ))}
     </div>
+    </>
   );
 }
