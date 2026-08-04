@@ -35,6 +35,15 @@ export default function LoginPage() {
     e.preventDefault();
     setError(''); setInfo(''); setLoading(true);
     try {
+      if (mode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth/reset`,
+        });
+        if (error) { setError('לא הצלחנו לשלוח את המייל. בדוק את הכתובת ונסה שוב.'); return; }
+        setInfo('נשלח אליך מייל עם קישור לאיפוס הסיסמה. בדוק גם בספאם.');
+        setMode('login');
+        return;
+      }
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) { setError('פרטי התחברות שגויים'); return; }
@@ -47,6 +56,13 @@ export default function LoginPage() {
           options: { data: { full_name: fullName, phone } },
         });
         if (error) { setError('שגיאה בהרשמה. נסה שוב מאוחר יותר.'); return; }
+        // WhatsApp welcome + verification note (best effort, non-blocking)
+        if (phone) {
+          fetch('/api/auth/welcome', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, name: fullName }),
+          }).catch(() => {});
+        }
         setInfo('נשלח אליך מייל אימות. יש לאשר אותו ואז להתחבר.');
         setMode('login');
       }
@@ -83,8 +99,8 @@ export default function LoginPage() {
             <div className="login-box-icon">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
             </div>
-            <h2>{mode === 'login' ? 'כניסה למערכת' : 'הרשמה למערכת'}</h2>
-            <p>{mode === 'login' ? 'הזן את פרטיך כדי להתחבר' : 'צור חשבון חדש במערכת'}</p>
+            <h2>{mode === 'login' ? 'כניסה למערכת' : mode === 'forgot' ? 'איפוס סיסמה' : 'הרשמה למערכת'}</h2>
+            <p>{mode === 'login' ? 'הזן את פרטיך כדי להתחבר' : mode === 'forgot' ? 'נשלח לך קישור לאיפוס למייל' : 'צור חשבון חדש במערכת'}</p>
           </div>
 
           {error && <div className="error-msg">{error}</div>}
@@ -117,17 +133,26 @@ export default function LoginPage() {
               <label>אימייל</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required dir="ltr" placeholder="your@email.com" />
             </div>
-            <div className="field">
-              <label>סיסמה</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required dir="ltr" minLength={mode === 'signup' ? 8 : undefined} placeholder="••••••••" />
-            </div>
+            {mode !== 'forgot' && (
+              <div className="field">
+                <label>סיסמה</label>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required dir="ltr" minLength={mode === 'signup' ? 8 : undefined} placeholder="••••••••" />
+              </div>
+            )}
+            {mode === 'login' && (
+              <div style={{ textAlign: 'left', marginTop: -6, marginBottom: 8 }}>
+                <a style={{ color: 'var(--muted-dim)', cursor: 'pointer', fontSize: 12.5 }} onClick={() => { setMode('forgot'); setError(''); setInfo(''); }}>שכחת סיסמה?</a>
+              </div>
+            )}
             <button className="btn" style={{ width: '100%', marginTop: 6 }} disabled={loading}>
-              {loading ? 'רגע...' : mode === 'login' ? 'התחברות' : 'הרשמה'}
+              {loading ? 'רגע...' : mode === 'login' ? 'התחברות' : mode === 'forgot' ? 'שליחת קישור לאיפוס' : 'הרשמה'}
             </button>
           </form>
           <div className="divider" />
           <div style={{ textAlign: 'center', fontSize: 13.5 }}>
-            {mode === 'login' ? (
+            {mode === 'forgot' ? (
+              <span><a style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => { setMode('login'); setError(''); }}>← חזרה להתחברות</a></span>
+            ) : mode === 'login' ? (
               <span>אין לך חשבון? <a style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => { setMode('signup'); setError(''); }}>הרשמה</a></span>
             ) : (
               <span>יש לך חשבון? <a style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => { setMode('login'); setError(''); }}>התחברות</a></span>
@@ -143,7 +168,7 @@ export default function LoginPage() {
           <a href="/privacy">מדיניות פרטיות</a>
           <a href="/disclaimer">הסרת אחריות</a>
         </div>
-        <p>כל הזכויות שמורות לדרסו — בית ליווי מקצועי למכרזים &copy; {new Date().getFullYear()}. המידע מסווג ומוגן.</p>
+        <p>כל הזכויות שמורות לדרסו — בית ליווי מקצועי למכרזים © {new Date().getFullYear()}. המידע מסווג ומוגן.</p>
       </footer>
     </div>
   );
