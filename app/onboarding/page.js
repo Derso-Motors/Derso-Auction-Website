@@ -18,7 +18,7 @@ async function saveOnboarding(formData) {
   const cardNumber = String(formData.get('card_number') || '').replace(/\D/g, '');
   const cardExpiry = String(formData.get('card_expiry') || '').trim();
 
-  if (!bidspirit) redirect(P + '?err=' + encodeURIComponent('חסר שם המשתמש בבידספיריט'));
+  if (!bidspirit) redirect(P + '?err=' + encodeURIComponent('חסר אימייל'));
   if (!city || !street) redirect(P + '?err=' + encodeURIComponent('חסרה כתובת מלאה (עיר ורחוב)'));
   if (nationalId.length !== 9) redirect(P + '?err=' + encodeURIComponent('תעודת זהות חייבת להכיל 9 ספרות'));
   if (!cardHolder) redirect(P + '?err=' + encodeURIComponent('חסר שם בעל הכרטיס'));

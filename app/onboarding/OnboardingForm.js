@@ -27,9 +27,9 @@ export default function OnboardingForm({ action, fullName, existing, err }) {
           {err && <div className="error-msg">{err}</div>}
 
           <form action={action} onSubmit={() => setBusy(true)}>
-            <div className="onboard-section">🏷️ חשבון בידספיריט</div>
+            <div className="onboard-section">📧 פרטי התקשרות</div>
             <div className="field">
-              <label>שם משתמש / אימייל בבידספיריט</label>
+              <label>אימייל</label>
               <input name="bidspirit" defaultValue={existing.bidspirit_username || ''} required dir="ltr" placeholder="your@email.com" style={{ textAlign: 'left' }} />
             </div>
 
