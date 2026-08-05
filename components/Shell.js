@@ -199,8 +199,11 @@ export default function Shell({ children, active }) {
     return () => { cancelled = true; };
   }, []);
 
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
   const handleSignOut = async () => {
-    if (!window.confirm('האם להתנתק?')) return;
+    setSigningOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.assign('/login?ok=' + encodeURIComponent('התנתקת בהצלחה ✓'));
@@ -246,7 +249,7 @@ export default function Shell({ children, active }) {
         </div>
         <div className="icon-sidebar-bottom">
           <HelpButton />
-          <button className="icon-sidebar-item" type="button" title="התנתקות" onClick={handleSignOut}>
+          <button className="icon-sidebar-item" type="button" title="התנתקות" onClick={() => setConfirmLogout(true)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
         </div>
@@ -256,6 +259,24 @@ export default function Shell({ children, active }) {
 
       <AssistantWidget isAdmin={isAdmin} />
       <PageToast />
+
+      {confirmLogout && (
+        <div className="confirm-overlay" onClick={() => !signingOut && setConfirmLogout(false)}>
+          <div className="confirm-box" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-icon">👋</div>
+            <div className="confirm-title">להתנתק מהאזור האישי?</div>
+            <div className="confirm-sub">תמיד אפשר להתחבר שוב עם המייל או עם Google</div>
+            <div className="confirm-actions">
+              <button className="btn danger" type="button" disabled={signingOut} onClick={handleSignOut}>
+                {signingOut ? 'מתנתק...' : 'כן, התנתקות'}
+              </button>
+              <button className="btn secondary" type="button" disabled={signingOut} onClick={() => setConfirmLogout(false)}>
+                ביטול
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="app-footer">
         <div className="app-footer-links">
