@@ -394,6 +394,14 @@ export default async function Dashboard() {
       <div className="page-title">שלום, {profile?.full_name || 'לקוח'}</div>
       <div className="page-sub">סקירה כללית של הרכבים והפעילות שלך</div>
 
+      <Link href="/book-call" className="card book-call-cta">
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>📞 קביעת שיחת אפיון</div>
+          <div className="muted" style={{ fontSize: 12.5 }}>בחר שעה נוחה — נציג שלנו יתקשר אליך (ראשון-חמישי, 12:30-16:00)</div>
+        </div>
+        <span className="btn" style={{ pointerEvents: 'none' }}>לקביעת שיחה ←</span>
+      </Link>
+
       <div className="grid cols-4" style={{ marginBottom: 4 }}>
         <div className="card stat">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
