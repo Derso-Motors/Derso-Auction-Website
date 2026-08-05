@@ -203,7 +203,7 @@ export default function Shell({ children, active }) {
     if (!window.confirm('האם להתנתק?')) return;
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push('/login');
+    window.location.assign('/login?ok=' + encodeURIComponent('התנתקת בהצלחה ✓'));
   };
 
   const isAdmin = profile?.role === 'admin';
@@ -263,7 +263,7 @@ export default function Shell({ children, active }) {
           <Link href="/privacy">מדיניות פרטיות</Link>
           <Link href="/disclaimer">הסרת אחריות</Link>
         </div>
-        <p>&copy; 2024 V-Track Analytics. כל הזכויות שמורות לדרסו — בית ליווי מקצועי למכרזים.</p>
+        <p>&copy; 2026 דרסו — בית ליווי מקצועי למכרזים. כל הזכויות שמורות.</p>
       </footer>
     </div>
   );
