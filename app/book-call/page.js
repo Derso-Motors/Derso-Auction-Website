@@ -17,6 +17,18 @@ function serviceClient() {
   return createSupabase(process.env.NEXT_PUBLIC_SUPABASE_URL, key, { auth: { persistSession: false } });
 }
 
+
+async function deleteGoogleEvent(eventId) {
+  const appsUrl = process.env.APPS_SCRIPT_URL;
+  if (!appsUrl || !eventId) return;
+  try {
+    await fetch(appsUrl, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'deleteMeeting', eventId }),
+    });
+  } catch {}
+}
+
 async function bookCall(formData) {
   'use server';
   const { supabase, user } = await requireUser();
@@ -76,10 +88,14 @@ async function bookCall(formData) {
   const appsUrl = process.env.APPS_SCRIPT_URL;
   if (appsUrl) {
     try {
-      await fetch(appsUrl, {
+      const res = await fetch(appsUrl, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'createMeeting', title: `שיחת אפיון — ${profile?.full_name || phone}`, startISO: startsAt.toISOString(), durationMin: 15, notes: `טלפון: ${phone}` }),
       });
+      const j = await res.json().catch(() => null);
+      if (j?.eventId && admin) {
+        await admin.from('call_bookings').update({ google_event_id: j.eventId }).eq('id', booking.id);
+      }
     } catch {}
   }
 
@@ -97,6 +113,7 @@ async function cancelMyCall(formData) {
     await supabase.from('call_bookings').update({ status: 'cancelled', cancelled_at: new Date().toISOString() }).eq('id', id);
     const admin = serviceClient();
     if (admin && booking.meeting_id) await admin.from('meetings').delete().eq('id', booking.meeting_id);
+    await deleteGoogleEvent(booking.google_event_id);
     await sendWhatsApp(OWNER_PHONE, `❌ ${booking.client_name || booking.phone} ביטל את שיחת האפיון שהייתה קבועה ל${fmtIl(booking.starts_at)}`);
   }
   revalidatePath('/book-call');

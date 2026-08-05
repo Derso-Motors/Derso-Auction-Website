@@ -52,6 +52,14 @@ export default async function CallActionPage({ params, searchParams }) {
   if (action === 'cancel') {
     await admin.from('call_bookings').update({ status: 'cancelled', cancelled_at: new Date().toISOString() }).eq('id', booking.id);
     if (booking.meeting_id) await admin.from('meetings').delete().eq('id', booking.meeting_id);
+    if (booking.google_event_id && process.env.APPS_SCRIPT_URL) {
+      try {
+        await fetch(process.env.APPS_SCRIPT_URL, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'deleteMeeting', eventId: booking.google_event_id }),
+        });
+      } catch {}
+    }
     await sendWhatsApp(OWNER_PHONE, `❌ ${booking.client_name || booking.phone} ביטל את שיחת האפיון שהייתה קבועה ל${when}`);
     return <Page icon="👌" title="השיחה בוטלה" sub="המועד התפנה. אפשר לקבוע שיחה חדשה בכל רגע מהאזור האישי" />;
   }
