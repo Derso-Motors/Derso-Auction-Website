@@ -59,15 +59,15 @@ function heuristicParse(text) {
 }
 
 async function aiParse(text) {
-  const key = process.env.OPENROUTER_API_KEY;
+  const key = process.env.AI_API_KEY || process.env.OPENROUTER_API_KEY;
   if (!key) return null;
   const nowIL = new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', dateStyle: 'full', timeStyle: 'short' });
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const res = await fetch(`${(process.env.AI_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
+        model: process.env.AI_MODEL || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
         messages: [{ role: 'user', content:
           `אתה עוזר אישי של בעל עסק לליווי מכרזי רכב. עכשיו בישראל: ${nowIL}.\nהמשפט שלו: "${text}"\n` +
           `החזר JSON בלבד: {"type":"meeting|task|note","title":"<כותרת קצרה>","details":"<פרטים או null>","due_at":"<ISO עם +03:00 או null; חשב 'מחר'/ימים מהיום>","client_name":"<שם או null>","location":"<מיקום או null>"}` }],
@@ -186,7 +186,7 @@ async function clientAnswer(supabase, user, profile, text) {
   const recCars = (recLists || []).flatMap((l) => l.recommended_cars || []);
 
   // AI mode: answer from this context only, with hard guardrails.
-  const key = process.env.OPENROUTER_API_KEY;
+  const key = process.env.AI_API_KEY || process.env.OPENROUTER_API_KEY;
   if (key) {
     const context =
       `שם הלקוח: ${profile?.full_name || ''}\n` +
@@ -197,11 +197,11 @@ async function clientAnswer(supabase, user, profile, text) {
       `רכבים בהמלצה עבורו: ${recCars.length}\n${PRICES}\n` +
       `מידע כללי: שחרור רכב אחרי זכייה תלוי בכונס הנכסים ואורך בדרך כלל מספר ימי עסקים עד כשבועיים; שלבי הליווי הם: ${STAGES.join(' ← ')}.`;
     try {
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      const res = await fetch(`${(process.env.AI_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, '')}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
         body: JSON.stringify({
-          model: process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
+          model: process.env.AI_MODEL || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
           messages: [{ role: 'user', content:
             `אתה נציג שירות של "דרסו — בית ליווי מקצועי למכרזים" בצ'אט האזור האישי.\n` +
             `הנתונים של הלקוח המחובר (אלה הנתונים היחידים שמותר להשתמש בהם):\n${context}\n\n` +
