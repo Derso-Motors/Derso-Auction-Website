@@ -26,6 +26,18 @@ export default function LoginPage() {
       if (saved) { setEmail(saved); setRemember(true); }
     } catch {}
   }, []);
+
+  // Surface messages passed in the URL (e.g. from the OAuth callback or logout)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const err = params.get('err');
+      const ok = params.get('ok');
+      if (err) setError(err);
+      if (ok) setInfo(ok);
+      if (err || ok) window.history.replaceState({}, '', window.location.pathname);
+    } catch {}
+  }, []);
   const [googleLoading, setGoogleLoading] = useState(false);
 
   async function signInWithGoogle() {
