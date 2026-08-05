@@ -5,30 +5,11 @@ import { SubmitButton, DeleteButton } from '../components/SubmitButton';
 import { requireUser } from '../lib/supabase-server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { timeAgo } from '../lib/utils';
 
 export const dynamic = 'force-dynamic';
 
 const STAGES = ['זכייה במכרז', 'תשלום למכרז', 'שחרור הרכב', 'העברת בעלות', 'שינוע הרכב', 'מסירה ללקוח'];
-
-function timeAgo(dateStr) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'עכשיו';
-  if (mins < 60) return `לפני ${mins} דקות`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `לפני ${hours} שעות`;
-  const days = Math.floor(hours / 24);
-  return `לפני ${days} ימים`;
-}
-
-function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'short' });
-}
-
-function formatTime(dateStr) {
-  return new Date(dateStr).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-}
 
 async function deleteMeetingAction(formData) {
   'use server';
@@ -67,8 +48,8 @@ export default async function Dashboard() {
 
   if (isAdmin) {
     const [{ data: clients }, { data: cars }, { data: orders }, { data: unread }, { data: meetings }, { data: auctions }, { count: orderCount }] = await Promise.all([
-      supabase.from('profiles').select('*').eq('role', 'client').order('created_at', { ascending: false }),
-      supabase.from('cars').select('*, car_stages(*), car_updates(created_at), profiles(full_name), client_name, client_phone, image_url').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('*').eq('role', 'client').order('created_at', { ascending: false }).limit(50),
+      supabase.from('cars').select('*, car_stages(*), car_updates(created_at), profiles(full_name), client_name, client_phone, image_url').order('created_at', { ascending: false }).limit(50),
       supabase.from('report_orders').select('*, profiles(full_name)').order('created_at', { ascending: false }).limit(8),
       supabase.from('messages').select('id, body, profiles(full_name)').eq('sender_role', 'client').eq('read', false).order('created_at', { ascending: false }).limit(5),
       supabase.from('meetings').select('*, profiles(full_name)').order('scheduled_at', { ascending: true }),
@@ -169,13 +150,13 @@ export default async function Dashboard() {
                 const current = stgs.find((s) => s.status === 'in_progress');
                 const clientLabel = car.profiles?.full_name || car.client_name || 'ללא לקוח';
                 return (
-                  <div key={car.id} className="side-item">
+                  <div key={car.id} className="feed-item" style={{ padding: '12px 0', borderBottom: '1px solid var(--border)', borderRadius: 0 }}>
                     {car.image_url && (
                       <div className="feed-thumb">
                         <img src={car.image_url} alt={car.title} />
                       </div>
                     )}
-                    <Link href={`/cars/${car.id}`} className="side-item-content">
+                    <Link href={`/cars/${car.id}`} style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
                         <div style={{ fontWeight: 600, fontSize: 13.5 }}>{car.title}</div>
                         {car.year && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--primary)' }}>{car.year}</span>}
@@ -186,12 +167,10 @@ export default async function Dashboard() {
                         <span className="muted" style={{ fontSize: 11 }}>{done}/6</span>
                       </div>
                     </Link>
-                    <div className="side-item-actions">
-                      <form action={deleteCarAction}>
-                        <input type="hidden" name="id" value={car.id} />
-                        <DeleteButton title="מחיקת רכב" />
-                      </form>
-                    </div>
+                    <form action={deleteCarAction}>
+                      <input type="hidden" name="id" value={car.id} />
+                      <DeleteButton title="מחיקת רכב" />
+                    </form>
                   </div>
                 );
               })}
@@ -318,15 +297,15 @@ export default async function Dashboard() {
               {upcomingMeetings.slice(0, 5).map((m) => {
                 const d = new Date(m.scheduled_at);
                 return (
-                  <div key={m.id} className="side-item">
-                    <div className="side-item-content">
+                  <div key={m.id} className="row between" style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', gap: 6 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 13 }}>{m.title}</div>
                       <div className="muted" style={{ fontSize: 12 }}>
                         {m.profiles?.full_name} · {d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })}
                       </div>
                     </div>
-                    <div className="side-item-actions">
-                      <div className="side-item-time">
+                    <div style={{ textAlign: 'left', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "'JetBrains Mono', monospace", color: 'var(--primary)' }}>
                         {d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                       </div>
                       <form action={deleteMeetingAction}>
@@ -347,14 +326,14 @@ export default async function Dashboard() {
               </div>
               {!orders?.length && <div className="empty">אין הזמנות</div>}
               {orders?.slice(0, 4).map((o) => (
-                <div key={o.id} className="side-item">
-                  <div className="side-item-content">
+                <div key={o.id} className="row between" style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', gap: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.report_type}</div>
                     <div className="muted" style={{ fontSize: 12 }}>
                       {o.profiles?.full_name} · ₪{Number(o.amount).toLocaleString()} · {timeAgo(o.created_at)}
                     </div>
                   </div>
-                  <div className="side-item-actions">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span className={`badge ${o.status}`} style={{ fontSize: 10, padding: '2px 8px' }}>{statusLabel[o.status] || o.status}</span>
                     <form action={deleteOrderAction}>
                       <input type="hidden" name="id" value={o.id} />
@@ -371,8 +350,6 @@ export default async function Dashboard() {
   }
 
   // ===== CLIENT DASHBOARD =====
-  // New clients (email or Google) must verify their phone and complete
-  // onboarding before using the account.
   if (!profile?.phone_verified) redirect('/verify-phone');
   if (!profile?.onboarded) redirect('/onboarding');
 
@@ -382,7 +359,7 @@ export default async function Dashboard() {
     supabase.from('recommendation_lists').select('*, recommended_cars(id)').eq('client_id', user.id).order('created_at', { ascending: false }),
     supabase.from('auctions').select('*').eq('client_id', user.id).order('created_at', { ascending: false }),
     supabase.from('report_orders').select('*').eq('client_id', user.id).order('created_at', { ascending: false }),
-    supabase.from('call_bookings').select('id').eq('client_id', user.id).neq('status', 'cancelled').gte('starts_at', new Date().toISOString()).limit(1),
+    supabase.from('call_bookings').select('id').eq('client_id', user.id).neq('status', 'cancelled').gte('starts_at', new Date().toISOString()).limit(20),
   ]);
 
   const activeAuctions = (auctions || []).filter(a => ['submitted', 'under_review', 'pending_release'].includes(a.status));
@@ -473,8 +450,8 @@ export default async function Dashboard() {
       )}
 
       {/* Cars + sidebar */}
-      <div className="dashboard-layout">
-        <div className="dashboard-main">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16, marginTop: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
           <div className="card">
             <h3>הרכבים שלי</h3>
             {!cars?.length && <div className="empty">אין רכבים בתהליך</div>}
@@ -483,25 +460,23 @@ export default async function Dashboard() {
               const current = (car.car_stages || []).find((s) => s.status === 'in_progress');
               return (
                 <Link key={car.id} href={`/cars/${car.id}`}>
-                  <div className="side-item">
+                  <div className="feed-item" style={{ padding: '12px 0', borderBottom: '1px solid var(--border)', borderRadius: 0 }}>
                     {car.image_url && (
                       <div className="feed-thumb">
                         <img src={car.image_url} alt={car.title} />
                       </div>
                     )}
-                    <div className="side-item-content">
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600 }}>{car.title}</div>
                       <div className="muted">
                         {car.year ? `שנתון ${car.year}` : ''}{car.km ? ` · ${Number(car.km).toLocaleString()} ק"מ` : ''}
                       </div>
                     </div>
-                    <div className="side-item-actions">
-                      <div style={{ textAlign: 'left' }}>
-                        <span className={`badge ${done >= 6 ? 'done' : 'in_progress'}`} style={{ fontSize: 10, padding: '2px 8px' }}>
-                          {current ? current.title : done >= 6 ? 'הושלם' : STAGES[done] || 'בתהליך'}
-                        </span>
-                        <div className="muted" style={{ marginTop: 4, fontSize: 11 }}>{done}/6</div>
-                      </div>
+                    <div style={{ textAlign: 'left' }}>
+                      <span className={`badge ${done >= 6 ? 'done' : 'in_progress'}`} style={{ fontSize: 10, padding: '2px 8px' }}>
+                        {current ? current.title : done >= 6 ? 'הושלם' : STAGES[done] || 'בתהליך'}
+                      </span>
+                      <div className="muted" style={{ marginTop: 4, fontSize: 11 }}>{done}/6</div>
                     </div>
                   </div>
                 </Link>
@@ -513,34 +488,29 @@ export default async function Dashboard() {
             <div className="card">
               <h3>הזמנות דוחות</h3>
               {orders.map((o) => (
-                <div key={o.id} className="side-item">
-                  <div className="side-item-content">
+                <div key={o.id} className="row between" style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{o.report_type}</div>
                     <div className="muted" style={{ fontSize: 12 }}>₪{Number(o.amount).toLocaleString()} · {timeAgo(o.created_at)}</div>
                   </div>
-                  <div className="side-item-actions">
-                    <span className={`badge ${o.status}`} style={{ fontSize: 10, padding: '2px 8px' }}>{statusLabel[o.status] || o.status}</span>
-                  </div>
+                  <span className={`badge ${o.status}`} style={{ fontSize: 10, padding: '2px 8px' }}>{statusLabel[o.status] || o.status}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="dashboard-side">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
           <div className="card">
             <h3>פגישות קרובות</h3>
             {!meetings?.length && <div className="empty">אין פגישות</div>}
             {meetings?.map((m) => (
-              <div key={m.id} className="side-item">
-                <div className="side-item-content">
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{m.title}</div>
-                  <div className="muted" style={{ fontSize: 12 }}>
-                    {new Date(m.scheduled_at).toLocaleString('he-IL', { dateStyle: 'medium', timeStyle: 'short' })}
-                    {m.location ? ` · ${m.location}` : ''}
-                  </div>
+              <div key={m.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{m.title}</div>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  {new Date(m.scheduled_at).toLocaleString('he-IL', { dateStyle: 'medium', timeStyle: 'short' })}
+                  {m.location ? ` · ${m.location}` : ''}
                 </div>
-                <div className="side-item-time">{formatTime(m.scheduled_at)}</div>
               </div>
             ))}
           </div>
@@ -549,10 +519,8 @@ export default async function Dashboard() {
             {!recLists?.length && <div className="empty">אין רשימות</div>}
             {recLists?.map((l) => (
               <Link key={l.id} href={`/r/${l.share_token}`}>
-                <div className="side-item">
-                  <div className="side-item-content">
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{l.title}</div>
-                  </div>
+                <div className="row between" style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{l.title}</div>
                   <div className="muted">{l.recommended_cars?.length || 0} רכבים</div>
                 </div>
               </Link>

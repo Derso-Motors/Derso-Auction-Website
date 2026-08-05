@@ -1,5 +1,6 @@
-'use client';
 import Shell from '../../components/Shell';
+import Link from 'next/link';
+import { createClient } from '../../lib/supabase-server';
 
 const SECTIONS = [
   {
@@ -76,17 +77,33 @@ const SECTIONS = [
   }
 ];
 
-export default function TermsPage() {
-  return (
-    <Shell active="">
-      <div className="page-title">תנאי שימוש</div>
-      <p className="muted" style={{ marginBottom: 16, fontSize: 13 }}>עודכן לאחרונה: אוגוסט 2026</p>
+export default async function TermsPage() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const content = (
+    <>
+      <h1 className="page-title">תנאי שימוש</h1>
+      <p className="page-sub">עודכן לאחרונה: אוגוסט 2026</p>
       {SECTIONS.map((s) => (
-        <div className="card" key={s.heading} style={{ marginBottom: 14 }}>
+        <div className="card" key={s.heading}>
           <h3>{s.heading}</h3>
-          <p style={{ lineHeight: 1.8, fontSize: 14, whiteSpace: 'pre-line' }}>{s.body}</p>
+          <p style={{ lineHeight: 1.8, color: 'var(--muted)', whiteSpace: 'pre-line' }}>{s.body}</p>
         </div>
       ))}
-    </Shell>
+    </>
   );
+
+  if (!user) {
+    return (
+      <div className="legal-public">
+        <header className="legal-public-header">
+          <Link href="/login" className="btn secondary small">→ חזרה להתחברות</Link>
+          <b>דרסו — בית ליווי מקצועי למכרזים</b>
+        </header>
+        <main className="legal-public-main">{content}</main>
+      </div>
+    );
+  }
+  return <Shell active="">{content}</Shell>;
 }
