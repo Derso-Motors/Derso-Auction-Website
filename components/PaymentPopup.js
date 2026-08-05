@@ -1,11 +1,14 @@
 'use client';
 import { useState } from 'react';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function PaymentPopup({ order, onClose }) {
   const [loading, setLoading] = useState(false);
 
+  const [confirmPay, setConfirmPay] = useState(false);
+
   const handlePayment = () => {
-    if (!window.confirm('האם להמשיך לעמוד התשלום?')) return;
+    setConfirmPay(false);
     setLoading(true);
     // Redirect to external payment page
     // TODO: Replace with actual payment provider URL
@@ -15,6 +18,17 @@ export default function PaymentPopup({ order, onClose }) {
 
   return (
     <div className="popup-overlay" onClick={onClose}>
+      {confirmPay && (
+        <ConfirmDialog
+          icon="💳"
+          title="להמשיך לעמוד התשלום?"
+          sub="תועבר לדף תשלום מאובטח בחלון חדש"
+          confirmLabel="כן, לתשלום"
+          danger={false}
+          onConfirm={handlePayment}
+          onClose={() => setConfirmPay(false)}
+        />
+      )}
       <div className="popup-box" onClick={e => e.stopPropagation()}>
         <div className="popup-header">
           <h3 style={{ margin: 0, fontSize: 16 }}>תשלום עבור דוח</h3>
@@ -42,7 +56,7 @@ export default function PaymentPopup({ order, onClose }) {
         </div>
         <div className="popup-actions">
           {order.status === 'awaiting_payment' && (
-            <button className="btn" onClick={handlePayment} disabled={loading}>
+            <button className="btn" onClick={() => setConfirmPay(true)} disabled={loading}>
               {loading ? 'מעביר...' : 'המשך לתשלום'}
             </button>
           )}

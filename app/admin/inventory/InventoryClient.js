@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../lib/supabase-client';
 import { sendCarToClient } from './actions';
+import ConfirmDialog from '../../../components/ConfirmDialog';
 
 // The add-car wizard: one simple question-group per step, like the Telegram bot.
 const STEPS = [
@@ -250,6 +251,7 @@ function SendCarModal({ clients, initial, onClose, onSent }) {
 export default function InventoryClient({ initialCars, clients = [] }) {
   const router = useRouter();
   const [cars, setCars] = useState(initialCars);
+  const [confirming, setConfirming] = useState(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [filter, setFilter] = useState('available');
   const [sendInitial, setSendInitial] = useState(null); // null = closed
@@ -281,31 +283,58 @@ export default function InventoryClient({ initialCars, clients = [] }) {
     router.refresh();
   }
 
-  async function remove(car) {
-    if (!window.confirm(`למחוק את ${car.make} ${car.model} מהמאגר? פעולה זו אינה הפיכה.`)) return;
-    const supabase = createClient();
-    const { error } = await supabase.from('inventory_cars').delete().eq('id', car.id);
-    if (error) { showToast('❌ מחיקת הרכב נכשלה. נסה שוב.', true); return; }
-    showToast(`🗑️ ${car.make} ${car.model} נמחק מהמאגר`);
-    reload();
+  function remove(car) {
+    setConfirming({ type: 'delete', car });
   }
 
-  async function toggleSold(car) {
-    const toSold = car.status !== 'sold';
-    if (!window.confirm(toSold ? `לסמן את ${car.make} ${car.model} כנמכר?` : `להחזיר את ${car.make} ${car.model} למלאי?`)) return;
+  function toggleSold(car) {
+    setConfirming({ type: 'sold', car });
+  }
+
+  async function runConfirmed() {
+    const { type, car } = confirming;
+    setConfirming(null);
     const supabase = createClient();
-    const { error } = await supabase.from('inventory_cars')
-      .update({ status: toSold ? 'sold' : 'available', sold_at: toSold ? new Date().toISOString() : null })
-      .eq('id', car.id);
-    if (error) { showToast('❌ עדכון הסטטוס נכשל. נסה שוב.', true); return; }
-    showToast(toSold ? `✅ ${car.make} ${car.model} סומן כנמכר` : `↩️ ${car.make} ${car.model} הוחזר למלאי`);
-    reload();
+    if (type === 'delete') {
+      // Optimistic: drop from the list right away, restore on failure.
+      const prev = cars;
+      setCars((cs) => cs.filter((c) => c.id !== car.id));
+      const { error } = await supabase.from('inventory_cars').delete().eq('id', car.id);
+      if (error) { setCars(prev); showToast('❌ מחיקת הרכב נכשלה. נסה שוב.', true); return; }
+      showToast(`🗑️ ${car.make} ${car.model} נמחק מהמאגר`);
+      router.refresh();
+    } else {
+      const toSold = car.status !== 'sold';
+      const prev = cars;
+      setCars((cs) => cs.map((c) => (c.id === car.id ? { ...c, status: toSold ? 'sold' : 'available' } : c)));
+      const { error } = await supabase.from('inventory_cars')
+        .update({ status: toSold ? 'sold' : 'available', sold_at: toSold ? new Date().toISOString() : null })
+        .eq('id', car.id);
+      if (error) { setCars(prev); showToast('❌ עדכון הסטטוס נכשל. נסה שוב.', true); return; }
+      showToast(toSold ? `✅ ${car.make} ${car.model} סומן כנמכר` : `↩️ ${car.make} ${car.model} הוחזר למלאי`);
+      router.refresh();
+    }
   }
 
   const shown = cars.filter((c) => (filter === 'all' ? true : c.status === filter));
 
   return (
     <div>
+      {confirming && (
+        <ConfirmDialog
+          icon={confirming.type === 'delete' ? '🗑️' : confirming.car.status !== 'sold' ? '✅' : '↩️'}
+          title={confirming.type === 'delete'
+            ? `למחוק את ${confirming.car.make} ${confirming.car.model} מהמאגר?`
+            : confirming.car.status !== 'sold'
+              ? `לסמן את ${confirming.car.make} ${confirming.car.model} כנמכר?`
+              : `להחזיר את ${confirming.car.make} ${confirming.car.model} למלאי?`}
+          sub={confirming.type === 'delete' ? 'המחיקה מתבצעת מיד ואינה הפיכה' : 'אפשר לשנות בחזרה בכל רגע'}
+          confirmLabel={confirming.type === 'delete' ? 'כן, מחיקה' : 'כן, עדכון'}
+          danger={confirming.type === 'delete'}
+          onConfirm={runConfirmed}
+          onClose={() => setConfirming(null)}
+        />
+      )}
       <div className="inv-header">
         <div>
           <h1 className="page-title">מאגר רכבים 🚗</h1>

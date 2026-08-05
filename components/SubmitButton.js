@@ -1,5 +1,7 @@
 'use client';
 import { useFormStatus } from 'react-dom';
+import { useRef, useState } from 'react';
+import ConfirmDialog from './ConfirmDialog';
 
 export function SubmitButton({ children, className, style, title, disabled }) {
   const { pending } = useFormStatus();
@@ -16,19 +18,46 @@ export function SubmitButton({ children, className, style, title, disabled }) {
   );
 }
 
-export function DeleteButton({ title }) {
+export function DeleteButton({ title, confirmText = 'למחוק את הפריט?', confirmSub = 'המחיקה מתבצעת מיד ואינה הפיכה' }) {
   const { pending } = useFormStatus();
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+
+  function confirm() {
+    setOpen(false);
+    const form = btnRef.current?.closest('form');
+    // Remove the surrounding row/card from view immediately; the server
+    // action deletes in the DB and revalidates in the background.
+    const row = form?.closest('tr') || form?.closest('.inv-card') || form?.closest('.side-item') || form?.closest('li');
+    if (row) {
+      row.style.transition = 'opacity 0.2s';
+      row.style.opacity = '0';
+      row.style.pointerEvents = 'none';
+      setTimeout(() => { row.style.display = 'none'; }, 200);
+    }
+    form?.requestSubmit();
+  }
+
   return (
-    <button
-      className="btn-icon-delete"
-      type="submit"
-      title={title}
-      disabled={pending}
-      onClick={(e) => {
-        if (!window.confirm('בטוח למחוק?')) e.preventDefault();
-      }}
-    >
-      {pending ? '·' : '✕'}
-    </button>
+    <>
+      <button
+        ref={btnRef}
+        className="btn-icon-delete"
+        type="button"
+        title={title}
+        disabled={pending}
+        onClick={() => setOpen(true)}
+      >
+        {pending ? '·' : '✕'}
+      </button>
+      {open && (
+        <ConfirmDialog
+          title={confirmText}
+          sub={confirmSub}
+          onConfirm={confirm}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }
