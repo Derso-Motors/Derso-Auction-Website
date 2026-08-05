@@ -16,14 +16,6 @@ export default function BookCallClient({ days, slotTimes, busy, myBooking, bookA
   const router = useRouter();
   const [selectedDay, setSelectedDay] = useState(days[0]);
 
-  // Keep slots and booking status fresh: refresh on focus and every 30s,
-  // so a cancellation from WhatsApp shows up without a manual reload.
-  useEffect(() => {
-    const onFocus = () => router.refresh();
-    window.addEventListener('focus', onFocus);
-    const t = setInterval(() => router.refresh(), 30 * 1000);
-    return () => { window.removeEventListener('focus', onFocus); clearInterval(t); };
-  }, [router]);
   const [selectedTime, setSelectedTime] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
