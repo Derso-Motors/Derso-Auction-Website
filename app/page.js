@@ -370,6 +370,11 @@ export default async function Dashboard() {
   }
 
   // ===== CLIENT DASHBOARD =====
+  // New clients (email or Google) must verify their phone and complete
+  // onboarding before using the account.
+  if (!profile?.phone_verified) redirect('/verify-phone');
+  if (!profile?.onboarded) redirect('/onboarding');
+
   const [{ data: cars }, { data: meetings }, { data: recLists }, { data: auctions }, { data: orders }] = await Promise.all([
     supabase.from('cars').select('*, car_stages(*), image_url').eq('client_id', user.id).order('created_at', { ascending: false }),
     supabase.from('meetings').select('*').eq('client_id', user.id).eq('status', 'scheduled').order('scheduled_at'),

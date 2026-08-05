@@ -61,7 +61,7 @@ export default function VerifyPhonePage() {
     setBusy(false);
     if (!j.ok) { setError(j.error || 'האימות נכשל'); setDigits(['', '', '', '', '', '']); boxRefs.current[0]?.focus(); return; }
     setStep('done');
-    setTimeout(() => { router.push('/?ok=' + encodeURIComponent('מספר הטלפון אומת בהצלחה ✓')); router.refresh(); }, 1200);
+    setTimeout(() => { router.push('/onboarding'); router.refresh(); }, 1200);
   }
 
   function setDigit(i, val) {

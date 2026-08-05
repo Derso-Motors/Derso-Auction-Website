@@ -48,7 +48,8 @@ async function bookCall(formData) {
     redirect(P + '?err=' + encodeURIComponent('המועד הזה כבר עבר או קרוב מדי — בחר שעה מאוחרת יותר'));
   }
 
-  const { data: profile } = await supabase.from('profiles').select('full_name, phone').eq('id', user.id).single();
+  const { data: profile } = await supabase.from('profiles').select('full_name, phone, phone_verified, role').eq('id', user.id).single();
+  if (profile?.role !== 'admin' && !profile?.phone_verified) redirect('/verify-phone');
   const phone = profile?.phone;
   if (!phone) redirect(P + '?err=' + encodeURIComponent('חסר מספר טלפון בפרופיל — עדכן אותו בהגדרות ונסה שוב'));
 
@@ -122,6 +123,9 @@ async function cancelMyCall(formData) {
 
 export default async function BookCallPage() {
   const { supabase, user } = await requireUser();
+
+  const { data: me } = await supabase.from('profiles').select('role, phone_verified').eq('id', user.id).single();
+  if (me?.role !== 'admin' && !me?.phone_verified) redirect('/verify-phone');
 
   // Busy slots are fetched with the service key so clients can't see who booked —
   // only which times are taken.
