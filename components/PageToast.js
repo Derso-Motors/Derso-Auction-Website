@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react';
 
 // Global action feedback: server actions redirect back with ?ok=... or ?err=...
 // and this component (mounted once in Shell) pops the message and cleans the URL.
+// Toast text should be plain — strip emojis/symbols that come with the message.
+function clean(text) {
+  return String(text || '').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
+}
+
 export default function PageToast() {
   const [toast, setToast] = useState(null); // { kind: 'ok'|'err', text }
 
@@ -23,7 +28,7 @@ export default function PageToast() {
   if (!toast) return null;
   return (
     <div className={`inv-toast ${toast.kind === 'err' ? 'toast-err' : ''}`} onClick={() => setToast(null)}>
-      {toast.kind === 'err' ? '❌ ' : '✅ '}{toast.text}
+      {clean(toast.text)}
     </div>
   );
 }
