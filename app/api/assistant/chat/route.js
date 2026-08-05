@@ -2,6 +2,23 @@ import { createClient } from '../../../../lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
+// Per-user rate limiter: 15 requests per minute
+const userRateLimitMap = new Map();
+const USER_RATE_LIMIT_MAX = 15;
+const USER_RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+
+function checkUserRateLimit(userId) {
+  const now = Date.now();
+  const entry = userRateLimitMap.get(userId);
+  if (!entry || now - entry.start > USER_RATE_LIMIT_WINDOW) {
+    userRateLimitMap.set(userId, { start: now, count: 1 });
+    return true;
+  }
+  if (entry.count >= USER_RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
 const DAYS = { 'ראשון': 0, 'שני': 1, 'שלישי': 2, 'רביעי': 3, 'חמישי': 4, 'שישי': 5, 'שבת': 6 };
 
 function ilNow() {
@@ -37,7 +54,7 @@ function heuristicParse(text) {
       if (day < now) day.setFullYear(day.getFullYear() + 1);
     }
   }
-  const tm = t.match(/ב-?(\d{1,2})(?::(\d{2}))?\b/) || t.match(/בשעה (\d{1,2})(?::(\d{2}))?/);
+  const tm = t.match(/ב-?(\d{1,2})(?::(\d{2}))?\b/) || t.match(/בשעה (\d{1,2})(?::(\d{2}))?(\b|$)/);
   let due_at = null;
   if (day || tm) {
     const d = day || new Date(now);
@@ -63,9 +80,12 @@ async function aiParse(text) {
   if (!key) return null;
   const nowIL = new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', dateStyle: 'full', timeStyle: 'short' });
   try {
+    const abortController = new AbortController();
+    const timeout = setTimeout(() => abortController.abort(), 15000);
     const res = await fetch(`${(process.env.AI_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      signal: abortController.signal,
       body: JSON.stringify({
         model: process.env.AI_MODEL || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
         messages: [{ role: 'user', content:
@@ -74,6 +94,7 @@ async function aiParse(text) {
         temperature: 0.2, max_tokens: 250,
       }),
     });
+    clearTimeout(timeout);
     const j = await res.json();
     const out = j?.choices?.[0]?.message?.content || '';
     const a = out.indexOf('{'), b = out.lastIndexOf('}');
@@ -96,6 +117,7 @@ export async function POST(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return Response.json({ reply: 'צריך להתחבר קודם 🙂' }, { status: 401 });
+  if (!checkUserRateLimit(user.id)) return Response.json({ reply: 'יותר מדי בקשות — נסה שוב בעוד דקה 🙏' }, { status: 429 });
   const { data: p } = await supabase.from('profiles').select('role, full_name, credits').eq('id', user.id).single();
   const isAdmin = p?.role === 'admin';
 
@@ -197,9 +219,12 @@ async function clientAnswer(supabase, user, profile, text) {
       `רכבים בהמלצה עבורו: ${recCars.length}\n${PRICES}\n` +
       `מידע כללי: שחרור רכב אחרי זכייה תלוי בכונס הנכסים ואורך בדרך כלל מספר ימי עסקים עד כשבועיים; שלבי הליווי הם: ${STAGES.join(' ← ')}.`;
     try {
+      const clientAbort = new AbortController();
+      const clientTimeout = setTimeout(() => clientAbort.abort(), 15000);
       const res = await fetch(`${(process.env.AI_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, '')}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        signal: clientAbort.signal,
         body: JSON.stringify({
           model: process.env.AI_MODEL || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
           messages: [{ role: 'user', content:
@@ -210,6 +235,7 @@ async function clientAnswer(supabase, user, profile, text) {
           temperature: 0.3, max_tokens: 300,
         }),
       });
+      clearTimeout(clientTimeout);
       const j = await res.json();
       const out = j?.choices?.[0]?.message?.content?.trim();
       if (out) return Response.json({ reply: out });

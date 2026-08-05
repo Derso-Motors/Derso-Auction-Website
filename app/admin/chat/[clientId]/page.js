@@ -12,7 +12,7 @@ export default async function AdminChatPage({ params }) {
 
   const [{ data: client }, { data: messages }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', params.clientId).single(),
-    supabase.from('messages').select('*').eq('client_id', params.clientId).order('created_at'),
+    supabase.from('messages').select('*').eq('client_id', params.clientId).order('created_at').limit(100),
   ]);
 
   await supabase.from('messages').update({ read: true })

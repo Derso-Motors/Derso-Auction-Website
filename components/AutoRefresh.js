@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 // visible, and immediately when the user returns to the tab — so changes made
 // elsewhere (WhatsApp cancellation, admin actions) show up without a manual reload.
 // The focus handler is debounced so it doesn't interfere with click navigation.
-export default function AutoRefresh({ intervalMs = 30000 }) {
+export default function AutoRefresh({ intervalMs = 60000 }) {
   const router = useRouter();
   const lastRefresh = useRef(0);
 

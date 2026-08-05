@@ -212,7 +212,7 @@ export default async function BroadcastsPage({ searchParams }) {
     supabase.from('broadcast_queue').select('*, profiles(full_name)').in('status', ['pending', 'held']).order('scheduled_at'),
     supabase.from('broadcast_subscribers').select('*, profiles(full_name, phone)').order('created_at'),
     supabase.from('profiles').select('id, full_name').eq('role', 'client').order('full_name'),
-    supabase.from('broadcast_queue').select('*, profiles(full_name)').eq('status', 'sent').order('sent_at', { ascending: false }).limit(500),
+    supabase.from('broadcast_queue').select('*, profiles(full_name)').eq('status', 'sent').order('sent_at', { ascending: false }).limit(100),
   ]);
 
   const activeSubs = (subs || []).filter((s) => s.active);

@@ -60,7 +60,7 @@ async function deleteClient(formData) {
 export default async function ClientsPage() {
   const supabase = await requireAdmin();
 
-  const { data: clients } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+  const { data: clients } = await supabase.from('profiles').select('id, full_name, phone, role, credits, created_at').order('created_at', { ascending: false }).limit(200);
   const clientOptions = (clients || []).filter((c) => c.role === 'client');
 
   return (

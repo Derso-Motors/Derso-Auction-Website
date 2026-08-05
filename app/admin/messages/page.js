@@ -19,7 +19,8 @@ export default async function AdminMessagesPage() {
   const { data: allMessages } = await supabase
     .from('messages')
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(500);
 
   const conversations = (clients || []).map((c) => {
     const msgs = (allMessages || []).filter((m) => m.client_id === c.id);

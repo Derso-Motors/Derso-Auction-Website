@@ -19,17 +19,17 @@ export async function middleware(request) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
 
   const path = request.nextUrl.pathname;
   const isPublic = path.startsWith('/login') || path.startsWith('/r/') || path.startsWith('/call/') || path.startsWith('/auth/') || path.startsWith('/_next') || path.startsWith('/favicon') || path.startsWith('/terms') || path.startsWith('/privacy') || path.startsWith('/disclaimer') || path.startsWith('/api/');
 
-  if (!user && !isPublic) {
+  if (!session?.user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
-  if (user && path.startsWith('/login')) {
+  if (session?.user && path.startsWith('/login')) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     return NextResponse.redirect(url);
