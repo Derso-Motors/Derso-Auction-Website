@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Shell from '../components/Shell';
+import WelcomeCallPopup from '../components/WelcomeCallPopup';
 import { SubmitButton, DeleteButton } from '../components/SubmitButton';
 import { requireUser } from '../lib/supabase-server';
 import { revalidatePath } from 'next/cache';
@@ -375,12 +376,13 @@ export default async function Dashboard() {
   if (!profile?.phone_verified) redirect('/verify-phone');
   if (!profile?.onboarded) redirect('/onboarding');
 
-  const [{ data: cars }, { data: meetings }, { data: recLists }, { data: auctions }, { data: orders }] = await Promise.all([
+  const [{ data: cars }, { data: meetings }, { data: recLists }, { data: auctions }, { data: orders }, { data: myCalls }] = await Promise.all([
     supabase.from('cars').select('*, car_stages(*), image_url').eq('client_id', user.id).order('created_at', { ascending: false }),
     supabase.from('meetings').select('*').eq('client_id', user.id).eq('status', 'scheduled').order('scheduled_at'),
     supabase.from('recommendation_lists').select('*, recommended_cars(id)').eq('client_id', user.id).order('created_at', { ascending: false }),
     supabase.from('auctions').select('*').eq('client_id', user.id).order('created_at', { ascending: false }),
     supabase.from('report_orders').select('*').eq('client_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('call_bookings').select('id').eq('client_id', user.id).neq('status', 'cancelled').gte('starts_at', new Date().toISOString()).limit(1),
   ]);
 
   const activeAuctions = (auctions || []).filter(a => ['submitted', 'under_review', 'pending_release'].includes(a.status));
@@ -396,6 +398,7 @@ export default async function Dashboard() {
 
   return (
     <Shell active="home">
+      <WelcomeCallPopup hasBooking={!!myCalls?.length} />
       <div className="page-title">שלום, {profile?.full_name || 'לקוח'}</div>
       <div className="page-sub">סקירה כללית של הרכבים והפעילות שלך</div>
 
