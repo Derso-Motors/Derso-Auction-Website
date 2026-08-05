@@ -255,7 +255,15 @@ export default function Shell({ children, active }) {
         </div>
       </aside>
 
-      <main className="main">{children}</main>
+      <main className="main">
+        {loaded && !isAdmin && profile && !profile.phone_verified && (
+          <div className="verify-banner">
+            <span>📱 מספר הטלפון שלך עדיין לא אומת</span>
+            <Link href="/verify-phone" className="btn" style={{ padding: '6px 14px', fontSize: 13 }}>לאימות בוואטסאפ ←</Link>
+          </div>
+        )}
+        {children}
+      </main>
 
       <AssistantWidget isAdmin={isAdmin} />
       <PageToast />

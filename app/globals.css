@@ -788,3 +788,26 @@ label { display: block; font-size: 11.5px; font-weight: 600; margin-bottom: 5px;
 .confirm-actions .btn { min-width: 120px; }
 .btn.danger { background: var(--danger, #ef4444); color: #fff; border-color: transparent; }
 .btn.danger:hover { filter: brightness(1.1); }
+
+/* ── Phone verification page ───────────────────────────────────────────────── */
+.verify-box { max-width: 400px; }
+.verify-icon { font-size: 38px; margin-bottom: 6px; }
+.verify-icon.big { font-size: 52px; margin-bottom: 12px; }
+.verify-text { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin: 0 0 16px; }
+.code-boxes { display: flex; gap: 8px; justify-content: center; margin: 10px 0 16px; direction: ltr; }
+.code-box {
+  width: 46px; height: 54px; text-align: center; font-size: 22px; font-weight: 700;
+  background: var(--surface-high, rgba(255,255,255,0.05)); color: var(--text);
+  border: 1.5px solid var(--border); border-radius: 10px; outline: none;
+  transition: border-color 0.15s, transform 0.1s; direction: ltr;
+}
+.code-box:focus { border-color: var(--primary); transform: translateY(-2px); }
+.verify-links { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; margin-top: 8px; }
+.verify-links a { color: var(--primary); cursor: pointer; }
+.verify-done { text-align: center; padding: 18px 0; }
+@media (max-width: 480px) { .code-box { width: 40px; height: 48px; font-size: 19px; } }
+.verify-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: rgba(186,199,227,0.08); border: 1px solid rgba(186,199,227,0.3);
+  border-radius: 10px; padding: 10px 16px; margin-bottom: 18px; font-size: 13.5px; font-weight: 600;
+}

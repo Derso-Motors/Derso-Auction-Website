@@ -91,7 +91,7 @@ export default function LoginPage() {
             body: JSON.stringify({ phone, name: fullName }),
           }).catch(() => {});
         }
-        setInfo('נשלח אליך מייל אימות. יש לאשר אותו ואז להתחבר.');
+        setInfo('נרשמת בהצלחה! נשלח אליך מייל אימות — ואחרי ההתחברות הראשונה נאמת גם את הטלפון בוואטסאפ 📱');
         setMode('login');
       }
     } finally {
