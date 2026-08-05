@@ -1,5 +1,6 @@
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
+import DateTimePicker from '../../../components/DateTimePicker';
 import { requireUser } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -133,7 +134,7 @@ export default async function CalendarPage() {
               <div className="field"><label>שם לקוח (ללא רשום)</label><input name="client_name" placeholder="שם הלקוח" /></div>
               <div className="field"><label>טלפון לקוח</label><input name="client_phone" placeholder="050-1234567" dir="ltr" /></div>
               <div className="field"><label>נושא</label><input name="title" required /></div>
-              <div className="field"><label>מועד</label><input name="scheduled_at" type="datetime-local" required /></div>
+              <div className="field"><label>מועד</label><DateTimePicker name="scheduled_at" required includeTime /></div>
               <div className="field"><label>מיקום</label><input name="location" /></div>
               <SubmitButton className="btn">קביעת פגישה + שליחת וואטסאפ</SubmitButton>
             </form>

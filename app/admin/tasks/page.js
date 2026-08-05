@@ -1,5 +1,6 @@
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
+import DateTimePicker from '../../../components/DateTimePicker';
 import { requireUser } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -36,15 +37,14 @@ function fmtWhen(iso) {
   return new Date(iso).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', dateStyle: 'short', timeStyle: 'short' });
 }
 
-/* ── Server actions ─────────────────────────────────────────────────────────── */
+/* -- Server actions -------------------------------------------------------- */
 
 async function addTask(formData) {
   'use server';
   const supabase = await requireAdmin();
-  const date = formData.get('due_date');
-  const time = formData.get('due_time');
+  const dueAt = formData.get('due_at');
   let due = null;
-  if (date) due = new Date(`${date}T${time || '09:00'}:00+03:00`).toISOString();
+  if (dueAt) due = new Date(`${dueAt}:00+03:00`).toISOString();
   const kind = formData.get('kind') === 'note' ? 'note' : 'task';
   const { error } = await supabase.from('admin_tasks').insert({
     kind,
@@ -87,7 +87,7 @@ async function saveOwnerPhone(formData) {
   redirect(PAGE + '?ok=' + encodeURIComponent('מספר הטלפון נשמר ✓'));
 }
 
-/* ── Page ───────────────────────────────────────────────────────────────────── */
+/* -- Page ------------------------------------------------------------------ */
 
 export default async function TasksPage() {
   const supabase = await requireAdmin();
@@ -167,8 +167,7 @@ export default async function TasksPage() {
                 <option value="note">📝 הערה / לזכור</option>
               </select>
             </div>
-            <div className="field"><label>תאריך יעד</label><input name="due_date" type="date" dir="ltr" /></div>
-            <div className="field"><label>שעה</label><input name="due_time" type="time" dir="ltr" defaultValue="09:00" /></div>
+            <div className="field"><label>תאריך ושעת יעד</label><DateTimePicker name="due_at" includeTime /></div>
           </div>
           <div className="field"><label>פירוט (אופציונלי)</label><input name="details" placeholder="פרטים נוספים..." /></div>
           <label className="row" style={{ gap: 8, fontSize: 13.5, cursor: 'pointer', marginBottom: 10 }}>

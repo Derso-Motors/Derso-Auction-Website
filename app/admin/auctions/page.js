@@ -1,4 +1,5 @@
 import Shell from '../../../components/Shell';
+import DateTimePicker from '../../../components/DateTimePicker';
 import { requireUser } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -248,7 +249,7 @@ export default async function AuctionsPage() {
                 </div>
                 <div className="field">
                   <label>תאריך סגירה</label>
-                  <input name="closing_date" type="date" dir="ltr" />
+                  <DateTimePicker name="closing_date" />
                 </div>
               </div>
               <SubmitButton className="btn" style={{ width: '100%', marginTop: 8 }}>הוסף מכרז</SubmitButton>
