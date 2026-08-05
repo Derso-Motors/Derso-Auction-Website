@@ -46,7 +46,12 @@ export async function POST(request) {
     const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const { error: insErr } = await admin.from('phone_verifications')
       .insert({ user_id: user.id, phone, code, expires_at: expires });
-    if (insErr) return Response.json({ ok: false, error: 'שגיאה בשמירת הקוד. נסה שוב.' }, { status: 500 });
+    if (insErr) {
+      const hint = insErr.code === 'PGRST301' || /jwt|401/i.test(insErr.message || '')
+        ? 'מפתח השרת (SUPABASE_SERVICE_ROLE_KEY) בוורסל לא תקין'
+        : insErr.message;
+      return Response.json({ ok: false, error: `שגיאה בשמירת הקוד: ${hint}` }, { status: 500 });
+    }
 
     const msg = `🔐 קוד האימות שלך לאזור האישי של דרסו: ${code}\n\nהקוד תקף ל-10 דקות. אם לא ביקשת קוד — התעלם מההודעה.\n\nדרסו — בית ליווי מקצועי למכרזים`;
     const sent = await sendWhatsApp(phone, msg);
