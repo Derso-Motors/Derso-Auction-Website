@@ -51,7 +51,7 @@ export default function VerifyPhonePage() {
     setStep('code');
     setDigits(['', '', '', '', '', '']);
     setCooldown(60);
-    setInfo('הקוד נשלח בוואטסאפ מהמספר של דרסו 📱');
+    setInfo('הקוד נשלח בווצאפ.');
     setTimeout(() => boxRefs.current[0]?.focus(), 50);
   }
 
