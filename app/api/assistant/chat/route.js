@@ -87,6 +87,7 @@ async function aiParse(text) {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
       signal: abortController.signal,
       body: JSON.stringify({
+        stream: false,
         model: process.env.AI_MODEL || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
         messages: [{ role: 'user', content:
           `אתה עוזר אישי של בעל עסק לליווי מכרזי רכב. עכשיו בישראל: ${nowIL}.\nהמשפט שלו: "${text}"\n` +
@@ -226,6 +227,7 @@ async function clientAnswer(supabase, user, profile, text) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
         signal: clientAbort.signal,
         body: JSON.stringify({
+          stream: false,
           model: process.env.AI_MODEL || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
           messages: [{ role: 'user', content:
             `אתה נציג שירות של "דרסו — בית ליווי מקצועי למכרזים" בצ'אט האזור האישי.\n` +
