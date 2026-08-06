@@ -19,17 +19,20 @@ export async function middleware(request) {
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  // Validate the token with the auth server (getUser), NOT getSession — otherwise
+  // middleware trusts a stale cookie while the pages (which use getUser) reject it,
+  // causing an infinite /login ↔ / redirect loop (ERR_TOO_MANY_REDIRECTS).
+  const { data: { user } } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
   const isPublic = path.startsWith('/login') || path.startsWith('/r/') || path.startsWith('/call/') || path.startsWith('/auth/') || path.startsWith('/_next') || path.startsWith('/favicon') || path.startsWith('/terms') || path.startsWith('/privacy') || path.startsWith('/disclaimer') || path.startsWith('/api/');
 
-  if (!session?.user && !isPublic) {
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
-  if (session?.user && path.startsWith('/login')) {
+  if (user && path.startsWith('/login')) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     return NextResponse.redirect(url);
