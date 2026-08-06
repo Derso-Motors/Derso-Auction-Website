@@ -88,6 +88,7 @@ function generateFBDescription(data) {
   if (data.customNotes) parts.push(data.customNotes);
   parts.push('');
   parts.push('📞 לפרטים נוספים — דרסו ליווי למכרזים');
+  parts.push('📱 וואטסאפ: 055-950-6913');
   parts.push('🔗 www.derso-motors.co.il');
   return parts.filter((p, i) => p !== '' || (i > 0 && parts[i - 1] !== '')).join('\n');
 }
@@ -98,12 +99,16 @@ export default function MarketplaceClient() {
   const [copied, setCopied] = useState({});
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState('');
+  const [aiDescription, setAiDescription] = useState('');
+  const [describing, setDescribing] = useState(false);
+  const [describeError, setDescribeError] = useState('');
   const descRef = useRef(null);
 
   async function handleParse() {
     const raw = rawText.trim();
     if (!raw) return;
     setParseError('');
+    setAiDescription('');
     setParsing(true);
     // Local parse first — supplies images/description and is the fallback.
     const local = parseBidspirit(raw);
@@ -143,6 +148,32 @@ export default function MarketplaceClient() {
     setParsing(false);
   }
 
+  async function handleDescribe() {
+    if (!data || describing) return;
+    setDescribeError('');
+    setDescribing(true);
+    try {
+      const res = await fetch('/api/marketplace/describe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: data.title, year: data.year, make: data.make,
+          model: data.model, km: data.km, price: data.price, notes: data.customNotes,
+        }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.description) setAiDescription(d.description);
+        else setDescribeError('לא הצלחתי לשכתב, נסה שוב');
+      } else {
+        setDescribeError('השכתוב נכשל, נסה שוב');
+      }
+    } catch {
+      setDescribeError('אין חיבור כרגע, נסה שוב');
+    }
+    setDescribing(false);
+  }
+
   function handleCopy(field, value) {
     navigator.clipboard.writeText(value);
     setCopied((prev) => ({ ...prev, [field]: true }));
@@ -151,11 +182,14 @@ export default function MarketplaceClient() {
 
   function handleCopyAll() {
     if (!data) return;
-    const all = `כותרת: ${data.title}\nשנתון: ${data.year}\nיצרן: ${data.make}\nדגם: ${data.model}\nמחיר: ${data.price}\n\n${generateFBDescription(data)}`;
+    const desc = aiDescription || generateFBDescription(data);
+    const all = `כותרת: ${data.title}\nשנתון: ${data.year}\nיצרן: ${data.make}\nדגם: ${data.model}\nמחיר: ${data.price}\n\n${desc}`;
     navigator.clipboard.writeText(all);
     setCopied((prev) => ({ ...prev, all: true }));
     setTimeout(() => setCopied((prev) => ({ ...prev, all: false })), 2000);
   }
+
+  const shownDescription = aiDescription || (data ? generateFBDescription(data) : '');
 
   return (
     <>
@@ -182,7 +216,7 @@ export default function MarketplaceClient() {
               <button className="btn" onClick={handleParse} disabled={!rawText.trim() || parsing}>
                 {parsing ? 'מפענח...' : 'פענוח אוטומטי'}
               </button>
-              <button className="btn secondary" onClick={() => { setRawText(''); setData(null); setParseError(''); }}>
+              <button className="btn secondary" onClick={() => { setRawText(''); setData(null); setParseError(''); setAiDescription(''); setDescribeError(''); }}>
                 נקה
               </button>
             </div>
@@ -218,11 +252,11 @@ export default function MarketplaceClient() {
                 </div>
               </div>
               <div className="field">
-                <label>הערות נוספות (יתוספו לתיאור)</label>
+                <label>הערות נוספות (ישולבו בתיאור / בשכתוב ה-AI)</label>
                 <textarea
                   value={data.customNotes}
                   onChange={(e) => setData((d) => ({ ...d, customNotes: e.target.value }))}
-                  placeholder="מצב מכני מצוין, ללא תאונות..."
+                  placeholder="מצב מכני מצוין, ללא תאונות, טיפולים במוסך..."
                   style={{ minHeight: 80, resize: 'vertical' }}
                 />
               </div>
@@ -252,18 +286,30 @@ export default function MarketplaceClient() {
               <div className="card">
                 <div className="row between" style={{ marginBottom: 12 }}>
                   <h3 style={{ margin: 0 }}>תיאור מוכן</h3>
-                  <button className="btn small" onClick={() => handleCopy('desc', generateFBDescription(data))}>
-                    {copied.desc ? '✓ הועתק' : 'העתק תיאור'}
-                  </button>
+                  <div className="row" style={{ gap: 8 }}>
+                    <button className="btn small secondary" onClick={handleDescribe} disabled={describing}>
+                      {describing ? 'משכתב...' : '✨ שכתוב מקצועי (AI)'}
+                    </button>
+                    <button className="btn small" onClick={() => handleCopy('desc', shownDescription)}>
+                      {copied.desc ? '✓ הועתק' : 'העתק תיאור'}
+                    </button>
+                  </div>
                 </div>
-                <pre ref={descRef} style={{
-                  whiteSpace: 'pre-wrap', fontSize: 13.5, lineHeight: 1.7,
-                  background: 'var(--surface-lowest)', padding: 16, borderRadius: 'var(--radius)',
-                  border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'inherit',
-                  cursor: 'pointer',
-                }} onClick={() => handleCopy('desc', generateFBDescription(data))}>
-                  {generateFBDescription(data)}
-                </pre>
+                {describeError && <div className="error-msg" style={{ marginBottom: 8 }}>{describeError}</div>}
+                {aiDescription && (
+                  <div className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>✨ נוסח מקצועי שנוצר ב-AI — ניתן לערוך למטה ולשכתב שוב.</div>
+                )}
+                <textarea
+                  ref={descRef}
+                  value={shownDescription}
+                  onChange={(e) => setAiDescription(e.target.value)}
+                  style={{
+                    whiteSpace: 'pre-wrap', fontSize: 13.5, lineHeight: 1.7, width: '100%',
+                    background: 'var(--surface-lowest)', padding: 16, borderRadius: 'var(--radius)',
+                    border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'inherit',
+                    minHeight: 160, resize: 'vertical',
+                  }}
+                />
               </div>
 
               {data.images.length > 0 && (
