@@ -181,7 +181,38 @@ function SendCarModal({ clients, initial, onClose, onSent }) {
   const [notify, setNotify] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [looking, setLooking] = useState(false);
+  const [pulled, setPulled] = useState('');
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Paste a Bidspirit link → auto-fill the fields (admin reviews/edits before sending).
+  async function pullFromLink() {
+    const url = (form.auction_link || '').trim();
+    if (!url) { setError('הדבק קישור Bidspirit בשדה "קישור למכרז" קודם'); return; }
+    setLooking(true); setError(''); setPulled('');
+    try {
+      const res = await fetch('/api/lot-lookup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const j = await res.json().catch(() => ({ ok: false }));
+      if (!j.ok) { setError(j.error || 'לא הצלחתי למשוך את הרכב מהקישור'); return; }
+      setForm((f) => ({
+        ...f,
+        title: j.car.title || f.title,
+        year: j.car.year || f.year,
+        km: j.car.km || f.km,
+        list_price: j.car.list_price || f.list_price,
+        image_url: j.car.image_url || f.image_url,
+        auction_link: j.car.auction_link || f.auction_link,
+      }));
+      setPulled('✓ הפרטים נמשכו — בדוק, ערוך במידת הצורך, ושלח.');
+    } catch {
+      setError('שגיאת תקשורת — נסה שוב');
+    } finally {
+      setLooking(false);
+    }
+  }
 
   async function send() {
     if (!form.client_id) { setError('בחר לקוח'); return; }
@@ -221,7 +252,13 @@ function SendCarModal({ clients, initial, onClose, onSent }) {
         </div>
         <div className="field">
           <label>קישור למכרז (בידספיריט וכו')</label>
-          <input dir="ltr" value={form.auction_link} onChange={(e) => set('auction_link', e.target.value)} placeholder="https://il.bidspirit.com/..." />
+          <div className="row" style={{ gap: 6, alignItems: 'stretch' }}>
+            <input dir="ltr" style={{ flex: 1 }} value={form.auction_link} onChange={(e) => set('auction_link', e.target.value)} placeholder="https://il.bidspirit.com/..." />
+            <button className="btn secondary" type="button" disabled={looking} onClick={pullFromLink} style={{ whiteSpace: 'nowrap' }}>
+              {looking ? 'מושך...' : '🔗 משוך פרטים'}
+            </button>
+          </div>
+          {pulled && <div className="muted" style={{ fontSize: 12, color: 'var(--success, #16a34a)', marginTop: 4 }}>{pulled}</div>}
         </div>
         <div className="field">
           <label>קישור תמונה</label>
