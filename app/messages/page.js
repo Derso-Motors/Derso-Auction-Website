@@ -12,7 +12,7 @@ export default async function MessagesPage() {
     .eq('client_id', user.id)
     .order('created_at');
 
-  // Opening the messages page marks admin messages as read (clears the bell)
+  // Mark all admin messages as read when client opens the chat page
   await supabase
     .from('messages')
     .update({ read: true })
