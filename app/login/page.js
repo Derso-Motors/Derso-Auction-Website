@@ -182,7 +182,7 @@ export default function LoginPage() {
                   <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} style={{ width: 'auto' }} />
                   זכור אותי
                 </label>
-                <a style={{ color: 'var(--muted-dim)', cursor: 'pointer', fontSize: 12.5 }} onClick={() => { setMode('forgot'); setError(''); setInfo(''); }}>שכחת סיסמה?</a>
+                <button type="button" style={{ background: 'none', border: 'none', color: 'var(--muted-dim)', cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit', padding: 0 }} onClick={() => { setMode('forgot'); setError(''); setInfo(''); }}>שכחת סיסמה?</button>
               </div>
             )}
             {mode === 'signup' && (
@@ -201,11 +201,11 @@ export default function LoginPage() {
           <div className="divider" />
           <div style={{ textAlign: 'center', fontSize: 13.5 }}>
             {mode === 'forgot' ? (
-              <span><a style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => { setMode('login'); setError(''); }}>← חזרה להתחברות</a></span>
+              <span><button type="button" style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }} onClick={() => { setMode('login'); setError(''); }}>← חזרה להתחברות</button></span>
             ) : mode === 'login' ? (
-              <span>אין לך חשבון? <a style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => { setMode('signup'); setError(''); }}>הרשמה</a></span>
+              <span>אין לך חשבון? <button type="button" style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }} onClick={() => { setMode('signup'); setError(''); }}>הרשמה</button></span>
             ) : (
-              <span>יש לך חשבון? <a style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => { setMode('login'); setError(''); }}>התחברות</a></span>
+              <span>יש לך חשבון? <button type="button" style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', padding: 0 }} onClick={() => { setMode('login'); setError(''); }}>התחברות</button></span>
             )}
           </div>
         </div>
