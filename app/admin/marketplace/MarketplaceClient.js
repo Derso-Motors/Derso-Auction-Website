@@ -6,13 +6,17 @@ const MAKES = [
   'טויוטה', 'יונדאי', 'קיה', 'מאזדה', 'סקודה', 'סוזוקי', 'מיצובישי',
   'ניסאן', 'שברולט', 'פולקסווגן', 'סיאט', 'פיאט', 'רנו', 'פיג\'ו',
   'סיטראון', 'הונדה', 'סובארו', 'BMW', 'מרצדס', 'אאודי', 'וולוו',
-  'פורד', 'אופל', 'דאצ\'יה', 'MG', 'BYD', 'גילי', 'צ\'רי',
+  'פורד', 'אופל', 'דאצ\'יה', 'MG', 'BYD', 'גילי', 'צ\'רי', 'ג\'יפ', 'לנד רובר', 'יואר',
 ];
 
-function parseBidspirit(text) {
+function parseBidspirit(input) {
+  let text = input;
+  // A pasted BidSpirit URL is percent-encoded Hebrew; decode so the slug
+  // (יצרן-דגם-שנה-ק"מ) becomes readable text we can scan.
+  try { if (/%[0-9a-f]{2}/i.test(text)) text = decodeURIComponent(text.replace(/\+/g, ' ')); } catch {}
   const result = { title: '', year: '', make: '', model: '', km: '', price: '', description: '', images: [] };
 
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
 
   const yearMatch = text.match(/\b(20[0-2]\d|19\d\d)\b/);
   if (yearMatch) result.year = yearMatch[1];
@@ -24,25 +28,20 @@ function parseBidspirit(text) {
   if (priceMatch) result.price = priceMatch[1].replace(/[,.']/g, '');
 
   for (const make of MAKES) {
-    if (text.includes(make)) {
-      result.make = make;
-      break;
-    }
+    if (text.includes(make)) { result.make = make; break; }
   }
   const engMakes = { toyota: 'Toyota', hyundai: 'Hyundai', kia: 'Kia', mazda: 'Mazda', skoda: 'Skoda',
     suzuki: 'Suzuki', mitsubishi: 'Mitsubishi', nissan: 'Nissan', chevrolet: 'Chevrolet',
     volkswagen: 'Volkswagen', seat: 'Seat', fiat: 'Fiat', renault: 'Renault', peugeot: 'Peugeot',
     citroen: 'Citroen', honda: 'Honda', subaru: 'Subaru', bmw: 'BMW', mercedes: 'Mercedes',
-    audi: 'Audi', volvo: 'Volvo', ford: 'Ford', opel: 'Opel', dacia: 'Dacia', mg: 'MG', byd: 'BYD' };
+    audi: 'Audi', volvo: 'Volvo', ford: 'Ford', opel: 'Opel', dacia: 'Dacia', mg: 'MG', byd: 'BYD', jeep: 'Jeep' };
   const lower = text.toLowerCase();
   for (const [eng, label] of Object.entries(engMakes)) {
-    if (lower.includes(eng)) {
-      if (!result.make) result.make = label;
-      break;
-    }
+    if (lower.includes(eng)) { if (!result.make) result.make = label; break; }
   }
 
   const models = ['קורולה', 'יאריס', 'קאמרי', 'C-HR', 'RAV4', 'לנד קרוזר', 'היילקס',
+    'ריינג\'ד', 'רנגלר', 'ג\'יפ ריינג\'ד',
     'טוסון', 'קונה', 'איוניק', 'i10', 'i20', 'i30', 'i35', 'סנטה פה',
     'ספורטאז\'', 'סורנטו', 'פיקאנטו', 'סטוניק', 'ניירו', 'EV6',
     'אוקטביה', 'פאביה', 'סופרב', 'קארוק', 'קודיאק',
@@ -62,13 +61,10 @@ function parseBidspirit(text) {
     'פוקוס', 'פיאסטה', 'קוגה', 'פומה',
     'קורסה', 'אסטרה', 'מוקה', 'גרנדלנד'];
   for (const model of models) {
-    if (text.includes(model)) {
-      result.model = model;
-      break;
-    }
+    if (text.includes(model)) { result.model = model; break; }
   }
 
-  const titleLine = lines.find(l => l.length > 5 && l.length < 100 && !l.startsWith('http'));
+  const titleLine = lines.find((l) => l.length > 5 && l.length < 100 && !l.startsWith('http'));
   if (titleLine) result.title = titleLine;
   if (!result.title && result.make) {
     result.title = [result.make, result.model, result.year].filter(Boolean).join(' ');
@@ -93,32 +89,72 @@ function generateFBDescription(data) {
   parts.push('');
   parts.push('📞 לפרטים נוספים — דרסו ליווי למכרזים');
   parts.push('🔗 www.derso-motors.co.il');
-  return parts.filter((p, i) => p !== '' || (i > 0 && parts[i-1] !== '')).join('\n');
+  return parts.filter((p, i) => p !== '' || (i > 0 && parts[i - 1] !== '')).join('\n');
 }
 
 export default function MarketplaceClient() {
   const [rawText, setRawText] = useState('');
   const [data, setData] = useState(null);
   const [copied, setCopied] = useState({});
+  const [parsing, setParsing] = useState(false);
+  const [parseError, setParseError] = useState('');
   const descRef = useRef(null);
 
-  function handleParse() {
-    const parsed = parseBidspirit(rawText);
-    setData({ ...parsed, customNotes: '' });
+  async function handleParse() {
+    const raw = rawText.trim();
+    if (!raw) return;
+    setParseError('');
+    setParsing(true);
+    // Local parse first — supplies images/description and is the fallback.
+    const local = parseBidspirit(raw);
+    let merged = { ...local };
+    const isBareUrl = /^https?:\/\/\S+$/i.test(raw) && !/\s/.test(raw);
+    try {
+      const res = await fetch('/api/marketplace/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: raw }),
+      });
+      if (res.ok) {
+        const ai = await res.json();
+        merged = {
+          ...local,
+          title: ai.title || local.title,
+          year: ai.year || local.year,
+          make: ai.make || local.make,
+          model: ai.model || local.model,
+          km: ai.km || local.km,
+          price: ai.price || local.price,
+        };
+        if (!merged.title && (merged.make || merged.model || merged.year)) {
+          merged.title = [merged.make, merged.model, merged.year].filter(Boolean).join(' ');
+        }
+      }
+    } catch {
+      // keep the local parse
+    }
+    const gotSomething = merged.title || merged.make || merged.model || merged.year || merged.km || merged.price;
+    if (!gotSomething && isBareUrl) {
+      setParseError('נראה שהדבקת קישור. פתח את עמוד הרכב ב-BidSpirit, לחץ Ctrl+A ואז Ctrl+C, והדבק כאן את הטקסט המלא של העמוד (לא את הכתובת).');
+    } else if (isBareUrl) {
+      setParseError('זוהה קישור — לפענוח מלא יותר הדבק את טקסט העמוד עצמו (Ctrl+A בעמוד הרכב).');
+    }
+    setData({ ...merged, customNotes: '' });
+    setParsing(false);
   }
 
   function handleCopy(field, value) {
     navigator.clipboard.writeText(value);
-    setCopied(prev => ({ ...prev, [field]: true }));
-    setTimeout(() => setCopied(prev => ({ ...prev, [field]: false })), 2000);
+    setCopied((prev) => ({ ...prev, [field]: true }));
+    setTimeout(() => setCopied((prev) => ({ ...prev, [field]: false })), 2000);
   }
 
   function handleCopyAll() {
     if (!data) return;
     const all = `כותרת: ${data.title}\nשנתון: ${data.year}\nיצרן: ${data.make}\nדגם: ${data.model}\nמחיר: ${data.price}\n\n${generateFBDescription(data)}`;
     navigator.clipboard.writeText(all);
-    setCopied(prev => ({ ...prev, all: true }));
-    setTimeout(() => setCopied(prev => ({ ...prev, all: false })), 2000);
+    setCopied((prev) => ({ ...prev, all: true }));
+    setTimeout(() => setCopied((prev) => ({ ...prev, all: false })), 2000);
   }
 
   return (
@@ -131,7 +167,7 @@ export default function MarketplaceClient() {
           <div className="card">
             <h3>הדבקת טקסט מ-BidSpirit</h3>
             <div className="muted" style={{ marginBottom: 12, fontSize: 13 }}>
-              פתח את עמוד הרכב ב-BidSpirit → סמן הכל (Ctrl+A) → העתק (Ctrl+C) → הדבק כאן
+              פתח את עמוד הרכב ב-BidSpirit → סמן הכל (Ctrl+A) → העתק (Ctrl+C) → הדבק כאן. העתקת הטקסט של העמוד — לא הכתובת.
             </div>
             <textarea
               value={rawText}
@@ -139,11 +175,14 @@ export default function MarketplaceClient() {
               placeholder="הדבק כאן את הטקסט מעמוד BidSpirit..."
               style={{ minHeight: 200, resize: 'vertical' }}
             />
+            {parseError && (
+              <div className="error-msg" style={{ marginTop: 10 }}>{parseError}</div>
+            )}
             <div className="row" style={{ marginTop: 12, gap: 8 }}>
-              <button className="btn" onClick={handleParse} disabled={!rawText.trim()}>
-                פענוח אוטומטי
+              <button className="btn" onClick={handleParse} disabled={!rawText.trim() || parsing}>
+                {parsing ? 'מפענח...' : 'פענוח אוטומטי'}
               </button>
-              <button className="btn secondary" onClick={() => { setRawText(''); setData(null); }}>
+              <button className="btn secondary" onClick={() => { setRawText(''); setData(null); setParseError(''); }}>
                 נקה
               </button>
             </div>
@@ -155,34 +194,34 @@ export default function MarketplaceClient() {
               <div className="grid cols-2">
                 <div className="field">
                   <label>כותרת (Title)</label>
-                  <input value={data.title} onChange={(e) => setData(d => ({ ...d, title: e.target.value }))} />
+                  <input value={data.title} onChange={(e) => setData((d) => ({ ...d, title: e.target.value }))} />
                 </div>
                 <div className="field">
                   <label>מחיר (Price)</label>
-                  <input value={data.price} onChange={(e) => setData(d => ({ ...d, price: e.target.value }))} type="number" dir="ltr" />
+                  <input value={data.price} onChange={(e) => setData((d) => ({ ...d, price: e.target.value }))} type="number" dir="ltr" />
                 </div>
                 <div className="field">
                   <label>שנתון (Year)</label>
-                  <input value={data.year} onChange={(e) => setData(d => ({ ...d, year: e.target.value }))} type="number" dir="ltr" />
+                  <input value={data.year} onChange={(e) => setData((d) => ({ ...d, year: e.target.value }))} type="number" dir="ltr" />
                 </div>
                 <div className="field">
                   <label>יצרן (Make)</label>
-                  <input value={data.make} onChange={(e) => setData(d => ({ ...d, make: e.target.value }))} />
+                  <input value={data.make} onChange={(e) => setData((d) => ({ ...d, make: e.target.value }))} />
                 </div>
                 <div className="field">
                   <label>דגם (Model)</label>
-                  <input value={data.model} onChange={(e) => setData(d => ({ ...d, model: e.target.value }))} />
+                  <input value={data.model} onChange={(e) => setData((d) => ({ ...d, model: e.target.value }))} />
                 </div>
                 <div className="field">
                   <label>ק"מ</label>
-                  <input value={data.km} onChange={(e) => setData(d => ({ ...d, km: e.target.value }))} type="number" dir="ltr" />
+                  <input value={data.km} onChange={(e) => setData((d) => ({ ...d, km: e.target.value }))} type="number" dir="ltr" />
                 </div>
               </div>
               <div className="field">
                 <label>הערות נוספות (יתוספו לתיאור)</label>
                 <textarea
                   value={data.customNotes}
-                  onChange={(e) => setData(d => ({ ...d, customNotes: e.target.value }))}
+                  onChange={(e) => setData((d) => ({ ...d, customNotes: e.target.value }))}
                   placeholder="מצב מכני מצוין, ללא תאונות..."
                   style={{ minHeight: 80, resize: 'vertical' }}
                 />
