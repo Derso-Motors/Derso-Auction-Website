@@ -4,6 +4,7 @@ import { requireUser } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { sendWhatsApp } from '../../../lib/whatsapp';
+import BidspiritLinkFill from '../../../components/BidspiritLinkFill';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,6 +128,7 @@ export default async function RecommendationsPage() {
                       <div className="field"><label>מחיר משוער</label><input name="est_price" type="number" /></div>
                       <div className="field"><label>קישור מכרז</label><input name="auction_link" dir="ltr" /></div>
                       <div className="field"><label>קישור תמונה</label><input name="image_url" dir="ltr" /></div>
+                      <BidspiritLinkFill map={{ title: 'title', year: 'year', km: 'km', list_price: 'list_price', image_url: 'image_url' }} />
                       <div className="field"><label>הערות</label><input name="notes" /></div>
                     </div>
                     <SubmitButton className="btn small">הוספה</SubmitButton>

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { sendWhatsApp } from '../../../lib/whatsapp';
 import { carMessage, processDueItems, ilDate } from '../../../lib/broadcast';
+import BidspiritLinkFill from '../../../components/BidspiritLinkFill';
 
 export const dynamic = 'force-dynamic';
 
@@ -350,6 +351,7 @@ export default async function BroadcastsPage({ searchParams }) {
             <div className="field"><label>מחיר מחירון (₪)</label><input name="list_price" type="number" dir="ltr" /></div>
             <div className="field"><label>מחיר משוער (₪)</label><input name="est_price" type="number" dir="ltr" /></div>
             <div className="field"><label>קישור למכרז</label><input name="auction_link" dir="ltr" placeholder="https://il.bidspirit.com/..." /></div>
+            <BidspiritLinkFill map={{ title: 'title', year: 'year', km: 'km', list_price: 'list_price' }} />
             <div className="field"><label>הערה ללקוח</label><input name="notes" placeholder="בדיוק מה שחיפשת — המכרז נסגר היום!" /></div>
           </div>
           <SubmitButton className="btn">⚡ שליחה מיידית ללקוח</SubmitButton>

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import Link from 'next/link';
 import { timeAgo } from '../../../lib/utils';
+import BidspiritLinkFill from '../../../components/BidspiritLinkFill';
 import { sendWhatsApp } from '../../../lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
@@ -189,6 +190,7 @@ export default async function CarsPage() {
               </div>
               <div className="field"><label>קישור מכרז</label><input name="auction_link" dir="ltr" /></div>
               <div className="field"><label>קישור תמונה</label><input name="image_url" dir="ltr" /></div>
+              <BidspiritLinkFill map={{ title: 'title', year: 'year', km: 'km', license_plate: 'license_plate', image_url: 'image_url' }} />
               <SubmitButton className="btn">הוספת רכב</SubmitButton>
             </form>
           </div>
