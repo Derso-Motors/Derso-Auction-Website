@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Shell from '../components/Shell';
 import WelcomeCallPopup from '../components/WelcomeCallPopup';
+import RealtimeAlertClient from '../components/RealtimeAlertClient';
 import { SubmitButton, DeleteButton } from '../components/SubmitButton';
 import { requireUser } from '../lib/supabase-server';
 import { revalidatePath } from 'next/cache';
@@ -88,21 +89,14 @@ export default async function Dashboard() {
         <div className="page-title">לוח בקרה</div>
         <div className="page-sub">סקירת מערכת — דרסו ליווי למכרזים</div>
 
-        {/* Real-time Alert */}
+        {/* Real-time Alert (dismissible) */}
         {unread?.length > 0 && (
-          <div className="alert-box" style={{ marginBottom: 16 }}>
-            <div className="alert-box-icon">⚠</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text)', marginBottom: 4 }}>התראת זמן אמת</div>
-              <div style={{ fontSize: 14, color: 'var(--muted)' }}>
-                {unread.length} הודעות חדשות מלקוחות ממתינות למענה.
-                {unread[0]?.profiles?.full_name && (
-                  <> האחרונה מ-<span style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--primary)' }}>{unread[0].profiles.full_name}</span>: &quot;{unread[0].body?.substring(0, 60)}{unread[0].body?.length > 60 ? '...' : ''}&quot;</>
-                )}
-              </div>
-            </div>
-            <Link href="/admin/messages" style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)', whiteSpace: 'nowrap', flexShrink: 0 }}>צפה בהודעות</Link>
-          </div>
+          <RealtimeAlertClient
+            count={unread.length}
+            name={unread[0]?.profiles?.full_name}
+            body={unread[0]?.body}
+            sig={String(unread[0]?.id || unread.length)}
+          />
         )}
 
         {/* Bento Grid: Stats */}
