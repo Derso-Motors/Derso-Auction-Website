@@ -77,7 +77,8 @@ function heuristicParse(text) {
 
 async function aiParse(text) {
   const key = process.env.AI_API_KEY || process.env.OPENROUTER_API_KEY;
-  if (!key) return null;
+  if (!key) { console.warn('[assistant:admin] no AI key set — using heuristic'); return null; }
+  const model = process.env.AI_MODEL || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
   const nowIL = new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', dateStyle: 'full', timeStyle: 'short' });
   try {
     const abortController = new AbortController();
@@ -88,7 +89,7 @@ async function aiParse(text) {
       signal: abortController.signal,
       body: JSON.stringify({
         stream: false,
-        model: process.env.AI_MODEL || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
+        model,
         messages: [{ role: 'user', content:
           `אתה עוזר אישי של בעל עסק לליווי מכרזי רכב. עכשיו בישראל: ${nowIL}.\nהמשפט שלו: "${text}"\n` +
           `החזר JSON בלבד: {"type":"meeting|task|note","title":"<כותרת קצרה>","details":"<פרטים או null>","due_at":"<ISO עם +03:00 או null; חשב 'מחר'/ימים מהיום>","client_name":"<שם או null>","location":"<מיקום או null>"}` }],
@@ -96,13 +97,18 @@ async function aiParse(text) {
       }),
     });
     clearTimeout(timeout);
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error(`[assistant:admin] AI upstream HTTP ${res.status} model=${model} body=${errText.slice(0, 300)}`);
+      return null;
+    }
     const j = await res.json();
     const out = j?.choices?.[0]?.message?.content || '';
     const a = out.indexOf('{'), b = out.lastIndexOf('}');
-    if (a === -1) return null;
+    if (a === -1) { console.warn('[assistant:admin] AI returned no JSON — using heuristic'); return null; }
     const parsed = JSON.parse(out.slice(a, b + 1));
     return parsed?.title ? parsed : null;
-  } catch { return null; }
+  } catch (e) { console.error('[assistant:admin] AI call failed:', e?.name || '', e?.message || ''); return null; }
 }
 
 async function postAppsScript(payload) {
@@ -211,6 +217,7 @@ async function clientAnswer(supabase, user, profile, text) {
   // AI mode: answer from this context only, with hard guardrails.
   const key = process.env.AI_API_KEY || process.env.OPENROUTER_API_KEY;
   if (key) {
+    const model = process.env.AI_MODEL || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
     const context =
       `שם הלקוח: ${profile?.full_name || ''}\n` +
       `יתרת קרדיטים: ₪${Number(profile?.credits || 0).toLocaleString('he-IL')}\n` +
@@ -228,7 +235,7 @@ async function clientAnswer(supabase, user, profile, text) {
         signal: clientAbort.signal,
         body: JSON.stringify({
           stream: false,
-          model: process.env.AI_MODEL || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
+          model,
           messages: [{ role: 'user', content:
             `אתה נציג שירות של "דרסו — בית ליווי מקצועי למכרזים" בצ'אט האזור האישי.\n` +
             `הנתונים של הלקוח המחובר (אלה הנתונים היחידים שמותר להשתמש בהם):\n${context}\n\n` +
@@ -238,10 +245,18 @@ async function clientAnswer(supabase, user, profile, text) {
         }),
       });
       clearTimeout(clientTimeout);
-      const j = await res.json();
-      const out = j?.choices?.[0]?.message?.content?.trim();
-      if (out) return Response.json({ reply: out });
-    } catch {}
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        console.error(`[assistant:client] AI upstream HTTP ${res.status} model=${model} body=${errText.slice(0, 300)}`);
+      } else {
+        const j = await res.json();
+        const out = j?.choices?.[0]?.message?.content?.trim();
+        if (out) return Response.json({ reply: out });
+        console.warn('[assistant:client] AI returned empty content — using fallback');
+      }
+    } catch (e) { console.error('[assistant:client] AI call failed:', e?.name || '', e?.message || ''); }
+  } else {
+    console.warn('[assistant:client] no AI key set — using keyword fallback');
   }
 
   // Fallback: keyword answers from the same RLS-scoped data.
