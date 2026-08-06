@@ -131,13 +131,14 @@ export async function POST(req) {
   let body;
   try { body = await req.json(); } catch { return Response.json({ reply: 'לא הבנתי 🤔' }, { status: 400 }); }
   const text = (body?.message || '').trim();
+  const history = Array.isArray(body?.history) ? body.history : [];
   if (!text) return Response.json({ reply: 'כתוב לי משהו 🙂' });
 
   // ── Client mode: answers ONLY from the signed-in client's own data.
   // The queries run with the client's session, so RLS physically limits every
   // row to their account — other clients' data cannot be returned.
   if (!isAdmin) {
-    return clientAnswer(supabase, user, p, text);
+    return clientAnswer(supabase, user, p, text, history);
   }
 
   // "What's on today?"
@@ -189,7 +190,7 @@ export async function POST(req) {
 }
 
 
-/* ── Client service mode ────────────────────────────────────────────────────── */
+/* ── Client service mode ───────────────────────────────── */
 
 const STAGES = ['זכייה במכרז', 'תשלום למכרז', 'שחרור הרכב', 'העברת בעלות', 'שינוע הרכב', 'מסירה ללקוח'];
 const PRICES =
@@ -198,7 +199,7 @@ const PRICES =
   '• סרטון מנוע רץ + טופס סליקה — 995 ₪\n' +
   '• דמי ליווי לרכישה — 3,500 ₪';
 
-async function clientAnswer(supabase, user, profile, text) {
+async function clientAnswer(supabase, user, profile, text, history = []) {
   // Everything below is RLS-scoped to this client only.
   const [{ data: cars }, { data: meetings }, { data: orders }, { data: recLists }] = await Promise.all([
     supabase.from('cars').select('title, year, current_stage, won_price').eq('client_id', user.id).limit(10),
@@ -214,7 +215,7 @@ async function clientAnswer(supabase, user, profile, text) {
   const meetLines = (meetings || []).map((m) => `📅 ${fmtWhen(m.scheduled_at)} — ${m.title}${m.location ? ` (${m.location})` : ''}`);
   const recCars = (recLists || []).flatMap((l) => l.recommended_cars || []);
 
-  // AI mode: answer from this context only, with hard guardrails.
+  // AI mode: hold a warm, guided conversation from this client's data only.
   const key = process.env.AI_API_KEY || process.env.OPENROUTER_API_KEY;
   if (key) {
     const model = process.env.AI_MODEL || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
@@ -224,8 +225,23 @@ async function clientAnswer(supabase, user, profile, text) {
       `הרכבים שלו בתהליך:\n${carLines.join('\n') || '(אין)'}\n` +
       `הפגישות הקרובות שלו:\n${meetLines.join('\n') || '(אין)'}\n` +
       `הזמנות דוחות: ${(orders || []).length}\n` +
-      `רכבים בהמלצה עבורו: ${recCars.length}\n${PRICES}\n` +
+      `רכבים בהמלצה עבורו: ${recCars.length}${recCars.length ? ' (' + recCars.map((r) => r.title).filter(Boolean).slice(0, 8).join(', ') + ')' : ''}\n${PRICES}\n` +
       `מידע כללי: שחרור רכב אחרי זכייה תלוי בכונס הנכסים ואורך בדרך כלל מספר ימי עסקים עד כשבועיים; שלבי הליווי הם: ${STAGES.join(' ← ')}.`;
+    const system =
+      `את/ה "דני", העוזר הווירטואלי החברי של "דרסו — בית ליווי מקצועי למכרזים", בצ'אט האזור האישי של הלקוח.\n` +
+      `דבר/י בגובה העיניים — חם, אישי, קצר וזורם, כמו חבר שמבין בתחום.\n\n` +
+      `הנתונים של הלקוח המחובר (המקור היחידי המותר לשימוש):\n${context}\n\n` +
+      `כללי שיחה מחייבים:\n` +
+      `• ענה/י אך ורק מהנתונים והמידע הכללי שלמעלה. אל תמציא/י עובדות, מחירי זכייה, מועדים מדויקים או תוצאות, ואל תבטיח/י הבטחות.\n` +
+      `• לעולם אל תזכיר/י לקוחות אחרים או מידע שאינו של הלקוח הזה.\n` +
+      `• המלצות מבוססות אך ורק על הנתונים של הלקוח (הרכבים שלו, הרשימות שלו, השלב שלו).\n` +
+      `• הובל/י את השיחה: בדרך כלל סיים/י בשאלת המשך אחת קצרה שמקדמת — למשל להציע שיחת אפיון, הזמנת דוח, או לסמן רכב שמעניין אותו.\n` +
+      `• אם חסר מידע או שהשאלה מורכבת — הפנה/י בעדינות לעמוד "שאלות ופניות" או לטלפון 055-950-6913.\n` +
+      `• עברית, טון חברי, 2–4 משפטים.`;
+    const histMsgs = (Array.isArray(history) ? history : [])
+      .slice(-10)
+      .filter((h) => h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string' && h.content.trim())
+      .map((h) => ({ role: h.role, content: h.content.slice(0, 2000) }));
     try {
       const clientAbort = new AbortController();
       const clientTimeout = setTimeout(() => clientAbort.abort(), 15000);
@@ -236,12 +252,8 @@ async function clientAnswer(supabase, user, profile, text) {
         body: JSON.stringify({
           stream: false,
           model,
-          messages: [{ role: 'user', content:
-            `אתה נציג שירות של "דרסו — בית ליווי מקצועי למכרזים" בצ'אט האזור האישי.\n` +
-            `הנתונים של הלקוח המחובר (אלה הנתונים היחידים שמותר להשתמש בהם):\n${context}\n\n` +
-            `שאלת הלקוח: "${text}"\n\n` +
-            `חוקים מחייבים: ענה רק מהנתונים למעלה. לעולם אל תמציא מידע, אל תזכיר לקוחות אחרים ואל תמסור עליהם דבר. אל תבטיח הבטחות (מחירי זכייה, מועדים מדויקים, תוצאות). אם אינך יודע — הפנה לכתוב לנו בעמוד "שאלות ופניות" או בטלפון 055-950-6913. השב בעברית, קצר וחם.` }],
-          temperature: 0.3, max_tokens: 300,
+          messages: [{ role: 'system', content: system }, ...histMsgs, { role: 'user', content: text }],
+          temperature: 0.5, max_tokens: 400,
         }),
       });
       clearTimeout(clientTimeout);
