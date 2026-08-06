@@ -21,13 +21,19 @@ export default function AssistantWidget({ isAdmin = false }) {
     const text = input.trim();
     if (!text || busy) return;
     setInput('');
+    // Prior turns (before this message) become the conversation history sent
+    // to the server, so the assistant can hold a multi-turn conversation.
+    const history = messages
+      .filter((m) => m.role === 'user' || m.role === 'bot')
+      .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }))
+      .slice(-10);
     setMessages((m) => [...m, { role: 'user', text }]);
     setBusy(true);
     try {
       const res = await fetch('/api/assistant/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, history }),
       });
       const j = await res.json().catch(() => null);
       setMessages((m) => [...m, { role: 'bot', text: j?.reply || 'משהו השתבש, נסה שוב 😕' }]);
@@ -59,7 +65,7 @@ export default function AssistantWidget({ isAdmin = false }) {
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="כתוב משפט אחד..."
+              placeholder="כתוב הודעה..."
               disabled={busy}
             />
             <button className="btn" type="submit" disabled={busy || !input.trim()}>שלח</button>
