@@ -13,7 +13,13 @@ export function SubmitButton({ children, className, style, title, disabled }) {
       type="submit"
       disabled={pending || disabled}
     >
-      {pending ? '...' : children}
+      {pending ? (
+        <span className="spinner" aria-label="טוען...">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M12 2a10 10 0 1 0 10 10" />
+          </svg>
+        </span>
+      ) : children}
     </button>
   );
 }
