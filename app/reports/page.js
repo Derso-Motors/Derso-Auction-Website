@@ -14,48 +14,28 @@ const REPORT_TYPES = [
 
 async function orderReport(formData) {
   'use server';
-  const { supabase, user } = await requireUser();
+  const { supabase } = await requireUser();
   const P = '/reports';
   const type = REPORT_TYPES.find((t) => t.key === formData.get('report_type'));
   if (!type) redirect(P + '?err=' + encodeURIComponent('סוג דוח לא תקין'));
 
   const useCredits = formData.get('use_credits') === 'on';
-  const { data: profile } = await supabase.from('profiles').select('credits').eq('id', user.id).single();
-  const canUseCredits = useCredits && Number(profile?.credits || 0) >= type.price;
 
-  if (canUseCredits) {
-    const { error: spendErr } = await supabase.rpc('spend_credits', { p_amount: type.price, p_reason: `תשלום עבור ${type.label}` });
-    if (spendErr) redirect(P + '?err=' + encodeURIComponent('החיוב בקרדיטים נכשל — לא בוצע חיוב'));
+  // Atomic: deducts credits (when covered) and inserts the order in one
+  // transaction. A failed insert rolls back the deduction — no manual refund.
+  const { data: status, error } = await supabase.rpc('order_report', {
+    p_report_type: type.label,
+    p_license_plate: formData.get('license_plate') || '',
+    p_amount: type.price,
+    p_use_credits: useCredits,
+  });
 
-    const { error: insertErr } = await supabase.from('report_orders').insert({
-      client_id: user.id,
-      report_type: type.label,
-      license_plate: formData.get('license_plate') || null,
-      amount: type.price,
-      paid_with_credits: true,
-      status: 'paid',
-    });
-
-    if (insertErr) {
-      await supabase.rpc('spend_credits', { p_amount: -type.price, p_reason: `החזר — שגיאה בהזמנת ${type.label}` });
-      redirect(P + '?err=' + encodeURIComponent('ההזמנה נכשלה — הקרדיטים הוחזרו ליתרה'));
-    }
-
-    revalidatePath(P);
-    redirect(P + '?ok=' + encodeURIComponent(`הדוח הוזמן ושולם בקרדיטים (₪${type.price}) ✓`));
-  } else {
-    const { error: insertErr } = await supabase.from('report_orders').insert({
-      client_id: user.id,
-      report_type: type.label,
-      license_plate: formData.get('license_plate') || null,
-      amount: type.price,
-      paid_with_credits: false,
-      status: 'awaiting_payment',
-    });
-    if (insertErr) redirect(P + '?err=' + encodeURIComponent('הזמנת הדוח נכשלה — נסו שוב'));
-  }
+  if (error) redirect(P + '?err=' + encodeURIComponent('הזמנת הדוח נכשלה — לא בוצע חיוב, נסו שוב'));
 
   revalidatePath(P);
+  if (status === 'paid') {
+    redirect(P + '?ok=' + encodeURIComponent(`הדוח הוזמן ושולם בקרדיטים (₪${type.price}) ✓`));
+  }
   redirect(P + '?ok=' + encodeURIComponent(useCredits
     ? 'הדוח הוזמן — היתרה לא מספיקה לחיוב בקרדיטים, ההזמנה ממתינה לתשלום'
     : 'הדוח הוזמן — ממתין לתשלום, ניצור קשר עם פרטי סליקה'));
