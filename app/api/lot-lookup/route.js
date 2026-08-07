@@ -57,10 +57,13 @@ export async function POST(request) {
     car: {
       title,
       year,
+      make: ci.manufacturer || '',
+      model: ci.model || '',
       km: ci.mileage || '',
       list_price: listPrice || '',
       license_plate: ci.carNumber || '',
       image_url: imgs[0] || '',
+      image_urls: imgs,
       auction_link: link,
     },
   });

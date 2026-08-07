@@ -110,7 +110,38 @@ export default function MarketplaceClient() {
     setParseError('');
     setAiDescription('');
     setParsing(true);
-    // Local parse first — supplies images/description and is the fallback.
+
+    // If they pasted a Bidspirit lot LINK, pull the fields from the catalog API.
+    if (/bidspirit\.com\/.*\/lot\/\d+/i.test(raw) || /bidspirit.*auction\/\d+\/lot\/\d+/i.test(raw)) {
+      try {
+        const res = await fetch('/api/lot-lookup', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: raw }),
+        });
+        const j = await res.json().catch(() => ({ ok: false }));
+        if (j.ok) {
+          setData({
+            title: j.car.title || '',
+            year: j.car.year || '',
+            make: j.car.make || '',
+            model: j.car.model || '',
+            km: j.car.km || '',
+            price: j.car.list_price || '',
+            images: j.car.image_urls || [],
+            description: '',
+            customNotes: '',
+          });
+        } else {
+          setParseError(j.error || 'לא הצלחתי למשוך מהקישור — נסה להדביק את טקסט העמוד (Ctrl+A בעמוד הרכב).');
+        }
+      } catch {
+        setParseError('שגיאת תקשורת — נסה שוב');
+      }
+      setParsing(false);
+      return;
+    }
+
+    // Otherwise: local parse first — supplies images/description and is the fallback.
     const local = parseBidspirit(raw);
     let merged = { ...local };
     const isBareUrl = /^https?:\/\/\S+$/i.test(raw) && !/\s/.test(raw);
@@ -199,14 +230,15 @@ export default function MarketplaceClient() {
       <div className="admin-desktop-layout">
         <div className="admin-col-right">
           <div className="card">
-            <h3>הדבקת טקסט מ-BidSpirit</h3>
+            <h3>הדבקת קישור או טקסט מ-BidSpirit</h3>
             <div className="muted" style={{ marginBottom: 12, fontSize: 13 }}>
-              פתח את עמוד הרכב ב-BidSpirit → סמן הכל (Ctrl+A) → העתק (Ctrl+C) → הדבק כאן. העתקת הטקסט של העמוד — לא הכתובת.
+              הכי מהיר: הדבק את <b>הקישור</b> של הרכב ולחץ "פענוח אוטומטי" — השדות יתמלאו לבד.
+              <br />לחלופין: בעמוד הרכב סמן הכל (Ctrl+A) → העתק (Ctrl+C) → הדבק כאן את הטקסט.
             </div>
             <textarea
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
-              placeholder="הדבק כאן את הטקסט מעמוד BidSpirit..."
+              placeholder="הדבק קישור לרכב ב-BidSpirit, או את הטקסט המלא של העמוד..."
               style={{ minHeight: 200, resize: 'vertical' }}
             />
             {parseError && (
