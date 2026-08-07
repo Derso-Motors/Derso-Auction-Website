@@ -10,6 +10,8 @@ async function saveOnboarding(formData) {
   const { supabase, user } = await requireUser();
   const P = '/onboarding';
 
+  const firstName = String(formData.get('first_name') || '').trim().replace(/\s+/g, ' ');
+  const lastName = String(formData.get('last_name') || '').trim().replace(/\s+/g, ' ');
   const bidspirit = String(formData.get('bidspirit') || '').trim();
   const city = String(formData.get('city') || '').trim();
   const street = String(formData.get('street') || '').trim();
@@ -17,6 +19,12 @@ async function saveOnboarding(formData) {
   const cardHolder = String(formData.get('card_holder') || '').trim();
   const cardNumber = String(formData.get('card_number') || '').replace(/\D/g, '');
   const cardExpiry = String(formData.get('card_expiry') || '').trim();
+
+  // Require a real Hebrew first + last name (replaces the Google display name).
+  if (!firstName || !lastName) redirect(P + '?err=' + encodeURIComponent('יש למלא שם פרטי ושם משפחה'));
+  if (/[A-Za-z]/.test(firstName + lastName) || !/[֐-׿]/.test(firstName) || !/[֐-׿]/.test(lastName))
+    redirect(P + '?err=' + encodeURIComponent('יש להזין שם בעברית בלבד (ללא אותיות באנגלית)'));
+  const fullName = `${firstName} ${lastName}`;
 
   if (!bidspirit) redirect(P + '?err=' + encodeURIComponent('חסר אימייל'));
   if (!city || !street) redirect(P + '?err=' + encodeURIComponent('חסרה כתובת מלאה (עיר ורחוב)'));
@@ -39,7 +47,7 @@ async function saveOnboarding(formData) {
   });
   if (error) redirect(P + '?err=' + encodeURIComponent('שמירת הפרטים נכשלה — נסה שוב'));
 
-  await supabase.from('profiles').update({ onboarded: true }).eq('id', user.id);
+  await supabase.from('profiles').update({ onboarded: true, full_name: fullName }).eq('id', user.id);
   revalidatePath('/');
   redirect('/?ok=' + encodeURIComponent('הפרטים נשמרו והחשבון שלך מוכן! 🎉'));
 }
