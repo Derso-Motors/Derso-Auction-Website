@@ -6,6 +6,8 @@ import AssistantWidget from './AssistantWidget';
 import PageToast from './PageToast';
 import AutoRefresh from './AutoRefresh';
 import LogoutButton from './LogoutButton';
+import GuidedTour from './GuidedTour';
+import SidebarTips from './SidebarTips';
 
 const ICONS = {
   home: <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></>,
@@ -75,7 +77,7 @@ export default async function Shell({ children, active }) {
       <aside className="icon-sidebar">
         <div className="icon-sidebar-nav">
           {items.map((it) => (
-            <Link key={it.key} href={it.href} className={`icon-sidebar-item ${active === it.key ? 'active' : ''}`} title={it.label}>
+            <Link key={it.key} href={it.href} data-nav-key={it.key} className={`icon-sidebar-item ${active === it.key ? 'active' : ''}`} title={it.label}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 {ICONS[it.icon]}
               </svg>
@@ -83,7 +85,7 @@ export default async function Shell({ children, active }) {
           ))}
         </div>
         <div className="icon-sidebar-bottom">
-          <ShellClient type="help" />
+          <ShellClient type="help" isAdmin={isAdmin} />
           <LogoutButton action={signOut} />
         </div>
       </aside>
@@ -101,6 +103,8 @@ export default async function Shell({ children, active }) {
       <AssistantWidget isAdmin={isAdmin} />
       <PageToast />
       <AutoRefresh />
+      <SidebarTips />
+      {!isAdmin && <GuidedTour />}
 
       <footer className="app-footer">
         <div className="app-footer-links">
