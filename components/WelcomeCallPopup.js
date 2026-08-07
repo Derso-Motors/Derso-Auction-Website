@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const SEEN_KEY = 'derso_call_popup_seen';
+const TOUR_KEY = 'derso_tour_seen';
 
 // One-time popup for new clients: why an intake call matters, with a direct
 // path to booking one. Shown once (localStorage) and only while the client
-// has no upcoming call booked.
+// has no upcoming call booked. Waits until the first-run guided tour has been
+// seen/skipped, so the two never appear at the same time.
 export default function WelcomeCallPopup({ hasBooking }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -15,6 +17,7 @@ export default function WelcomeCallPopup({ hasBooking }) {
   useEffect(() => {
     if (hasBooking) return;
     try {
+      if (!localStorage.getItem(TOUR_KEY)) return;
       if (localStorage.getItem(SEEN_KEY)) return;
     } catch {}
     const t = setTimeout(() => setOpen(true), 700);
