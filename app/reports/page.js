@@ -41,14 +41,61 @@ async function orderReport(formData) {
     : 'הדוח הוזמן — ממתין לתשלום, ניצור קשר עם פרטי סליקה'));
 }
 
-export default async function ReportsPage() {
+async function subscribeBroadcast() {
+  'use server';
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc('subscribe_broadcast');
+  if (error || !data?.ok) redirect('/reports?err=' + encodeURIComponent(data?.error === 'insufficient_credits' ? 'אין מספיק קרדיטים למנוי שידור (20₪ לחודש)' : 'ההרשמה נכשלה'));
+  revalidatePath('/reports');
+  redirect('/reports?ok=' + encodeURIComponent('נרשמת למנוי שידור! רכבים שמתאימים לך יופיעו כאן וגם בוואטסאפ 🚗'));
+}
+async function cancelBroadcast() {
+  'use server';
+  const { supabase } = await requireUser();
+  await supabase.rpc('cancel_broadcast');
+  revalidatePath('/reports'); redirect('/reports?ok=' + encodeURIComponent('מנוי השידור בוטל'));
+}
+async function subscribeAI() {
+  'use server';
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc('subscribe_ai_assistant');
+  if (error || !data?.ok) redirect('/reports?err=' + encodeURIComponent(data?.error === 'insufficient_credits' ? 'אין מספיק קרדיטים לעוזר האישי (4₪ לחודש)' : 'ההרשמה נכשלה'));
+  revalidatePath('/reports'); redirect('/reports?ok=' + encodeURIComponent('העוזר האישי AI הופעל! 🤖'));
+}
+async function cancelAI() {
+  'use server';
+  const { supabase } = await requireUser();
+  await supabase.rpc('cancel_ai_assistant');
+  revalidatePath('/reports'); redirect('/reports?ok=' + encodeURIComponent('העוזר האישי בוטל'));
+}
+async function saveCriteria(formData) {
+  'use server';
+  const { supabase, user } = await requireUser();
+  const crit = {
+    car_type: String(formData.get('car_type') || '').trim(),
+    year: String(formData.get('year') || '').trim(),
+    budget: String(formData.get('budget') || '').trim(),
+    max_km: String(formData.get('max_km') || '').trim(),
+  };
+  await supabase.from('profiles').update({ search_criteria: crit }).eq('id', user.id);
+  revalidatePath('/reports');
+  redirect('/reports?ok=' + encodeURIComponent('עדכנו את מה שאתה מחפש — נשלח לך רכבים מתאימים ✓'));
+}
+
+export default async function ReportsPage({ searchParams }) {
   const { supabase, user } = await requireUser();
 
-  const [{ data: profile }, { data: orders }, { data: txns }] = await Promise.all([
+  const [{ data: profile }, { data: orders }, { data: txns }, { data: bsub }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase.from('report_orders').select('*').eq('client_id', user.id).order('created_at', { ascending: false }),
     supabase.from('credit_transactions').select('*').eq('client_id', user.id).order('created_at', { ascending: false }).limit(10),
+    supabase.from('broadcast_subscribers').select('active, paid_until').eq('client_id', user.id).eq('active', true).maybeSingle(),
   ]);
+
+  const broadcastActive = !!bsub;
+  const aiActive = !!profile?.ai_assistant_active;
+  const crit = profile?.search_criteria || {};
+  const credits = Number(profile?.credits || 0);
 
   const statusLabel = {
     pending: 'ממתין', awaiting_payment: 'ממתין לתשלום', paid: 'שולם', delivered: 'נמסר', cancelled: 'בוטל',
@@ -57,7 +104,64 @@ export default async function ReportsPage() {
   return (
     <Shell active="reports">
       <div className="page-title">דוחות ותשלומים</div>
-      <div className="page-sub">הזמנת דוחות בדיקה, מעקב תשלומים ויתרת קרדיטים</div>
+      <div className="page-sub">מנויים, הזמנת דוחות, מעקב תשלומים ויתרת קרדיטים</div>
+
+      {searchParams?.err && <div className="error-msg">{searchParams.err}</div>}
+      {searchParams?.ok && !searchParams?.err && <div className="info-msg">{searchParams.ok}</div>}
+
+      <div className="grid cols-2">
+        <div className="card" style={{ borderColor: broadcastActive ? 'var(--success)' : undefined }}>
+          <h3>📡 מנוי שידור — 20₪ לחודש</h3>
+          <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>
+            רכבים שמתאימים בדיוק למה שאתה מחפש — נשלחים אליך אוטומטית לאזור <b>"רכבים בהמלצה › שידור"</b> וגם לוואטסאפ. אתה מעדכן את הקריטריונים מתי שתרצה.
+          </p>
+          {broadcastActive ? (
+            <>
+              <div style={{ margin: '6px 0 10px' }}><span className="badge paid">✓ מנוי פעיל</span>
+                {bsub?.paid_until && <span className="muted" style={{ fontSize: 12, marginInlineStart: 8 }}>עד {new Date(bsub.paid_until).toLocaleDateString('he-IL')}</span>}</div>
+              <form action={cancelBroadcast}><SubmitButton className="btn secondary">ביטול מנוי</SubmitButton></form>
+            </>
+          ) : (
+            <form action={subscribeBroadcast}>
+              <SubmitButton className="btn" style={{ width: '100%' }}>הרשמה לשידור — 20₪/חודש מהקרדיטים</SubmitButton>
+              <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>ינוכה מיתרת הקרדיטים (₪{credits.toLocaleString()} זמין)</div>
+            </form>
+          )}
+        </div>
+
+        <div className="card" style={{ borderColor: aiActive ? 'var(--success)' : undefined }}>
+          <h3>🤖 עוזר אישי AI — 4₪ לחודש</h3>
+          <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>
+            תוספת (add-on): עוזר חכם שעונה לך על שאלות, ממליץ מתוך הרכבים שלך ומלווה אותך לאורך הדרך — ישירות באתר.
+          </p>
+          {aiActive ? (
+            <>
+              <div style={{ margin: '6px 0 10px' }}><span className="badge paid">✓ פעיל</span></div>
+              <form action={cancelAI}><SubmitButton className="btn secondary">ביטול</SubmitButton></form>
+            </>
+          ) : (
+            <form action={subscribeAI}>
+              <SubmitButton className="btn" style={{ width: '100%' }}>הפעלת העוזר — 4₪/חודש מהקרדיטים</SubmitButton>
+            </form>
+          )}
+        </div>
+      </div>
+
+      {broadcastActive && (
+        <div className="card">
+          <h3>🔎 מה אני מחפש (שידור)</h3>
+          <p className="muted" style={{ fontSize: 13 }}>עדכן מתי שתרצה — נשלח לך רק רכבים שמתאימים לזה.</p>
+          <form action={saveCriteria}>
+            <div className="grid cols-2">
+              <div className="field"><label>סוג רכב</label><input name="car_type" defaultValue={crit.car_type || ''} placeholder="למשל: טויוטה קורולה, יונדאי i20" /></div>
+              <div className="field"><label>שנתון (מ־)</label><input name="year" defaultValue={crit.year || ''} placeholder="למשל: 2019" /></div>
+              <div className="field"><label>תקציב (₪)</label><input name="budget" defaultValue={crit.budget || ''} placeholder="למשל: 90000" /></div>
+              <div className="field"><label>מקסימום ק"מ</label><input name="max_km" defaultValue={crit.max_km || ''} placeholder="למשל: 120000" /></div>
+            </div>
+            <SubmitButton className="btn">שמירת הקריטריונים</SubmitButton>
+          </form>
+        </div>
+      )}
 
       <div className="grid cols-2">
         <div className="card">
