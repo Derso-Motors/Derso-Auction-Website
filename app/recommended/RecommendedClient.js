@@ -8,10 +8,11 @@ function fmt(n) { return n != null ? Number(n).toLocaleString('he-IL') : null; }
 export default function RecommendedClient({ initialCars }) {
   const [cars, setCars] = useState(initialCars);
   const [toast, setToast] = useState(null);
+  const [busyCar, setBusyCar] = useState(null);
 
   function showToast(msg, isErr) {
     setToast({ msg, isErr });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 4000);
   }
 
   async function mark(car, interest) {
@@ -28,6 +29,26 @@ export default function RecommendedClient({ initialCars }) {
     if (next === 'interested') showToast('סומן כמעניין ✓');
     else if (next === 'not_interested') showToast('סומן כלא רלוונטי ✓');
     else showToast('הסימון הוסר ✓');
+  }
+
+  async function requestAuction(car) {
+    if (!window.confirm(`רוצה שנקבע בשבילך מכרז על "${car.title}"?\nזה יתווסף לפגישות שלך וליומן שלנו, ונעדכן בוואטסאפ.`)) return;
+    setBusyCar(car.id);
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc('request_auction_meeting', { p_car_id: car.id });
+    setBusyCar(null);
+    if (error || !data?.ok) {
+      if (data?.error === 'already_requested') {
+        showToast('כבר ביקשת מכרז על הרכב הזה — הוא בפגישות שלך.', false);
+      } else {
+        showToast('לא הצלחנו לקבוע כרגע. נסה שוב או פנה אלינו בצ\'אט.', true);
+      }
+      return;
+    }
+    setCars((prev) => prev.map((c) => (c.id === car.id ? { ...c, client_interest: 'interested' } : c)));
+    showToast(data.scheduled
+      ? '🎉 המכרז נוסף לפגישות שלך וליומן שלנו — שלחנו אישור בוואטסאפ!'
+      : '🎉 הבקשה נרשמה ביומן שלנו — נחזור אליך לתיאום, שלחנו אישור בוואטסאפ!');
   }
 
   if (!cars.length) {
@@ -67,11 +88,19 @@ export default function RecommendedClient({ initialCars }) {
               </a>
             )}
             <div className="inv-card-actions">
-              <button
-                className={`btn ${car.client_interest === 'interested' ? 'success' : 'secondary'}`}
-                type="button" onClick={() => mark(car, 'interested')}>
-                👍 מעניין אותי
-              </button>
+              {car.client_interest !== 'interested' ? (
+                <button
+                  className="btn success"
+                  type="button"
+                  disabled={busyCar === car.id}
+                  onClick={() => requestAuction(car)}>
+                  {busyCar === car.id ? '⏳ שולח...' : '📅 מעניין — קבעו מכרז'}
+                </button>
+              ) : (
+                <button className="btn success" type="button" disabled>
+                  ✓ מעניין אותי — מכרז ביומן
+                </button>
+              )}
               <button
                 className={`btn ${car.client_interest === 'not_interested' ? 'danger-outline' : 'secondary'}`}
                 type="button" onClick={() => mark(car, 'not_interested')}>
