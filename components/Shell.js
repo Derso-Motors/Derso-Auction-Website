@@ -41,6 +41,7 @@ const ADMIN_NAV = [
   { href: '/admin/inventory', key: 'inventory', label: 'מאגר רכבים', icon: 'inventory' },
   { href: '/admin/broadcasts', key: 'broadcasts', label: 'שידורים', icon: 'broadcast' },
   { href: '/admin/tasks', key: 'tasks', label: 'משימות והיום', icon: 'tasks' },
+  { href: '/admin/nadav', key: 'nadav', label: 'נדב — תפעול', icon: 'broadcast' },
 ];
 
 const CLIENT_NAV = [
