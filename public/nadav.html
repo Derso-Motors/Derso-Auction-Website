@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>נדב — מרכז תפעול</title>
+<style>
+  :root{--bg:#0b0f17;--card:rgba(255,255,255,.04);--line:rgba(255,255,255,.09);--muted:#94a3b8;--txt:#e5e7eb}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#141a26,#0b0f17);color:var(--txt);
+    font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;min-height:100vh}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 16px 60px}
+  .stage{display:flex;flex-direction:column;align-items:center;padding:26px 0 6px}
+  .orb{width:190px;height:190px;border-radius:50%;position:relative;
+    background:radial-gradient(circle at 35% 30%,var(--o2),var(--o1) 70%);
+    box-shadow:0 0 60px 8px color-mix(in srgb,var(--o1) 55%,transparent),inset 0 0 40px color-mix(in srgb,var(--o2) 60%,transparent);
+    animation:pulse var(--sp) ease-in-out infinite}
+  .orb::after{content:'';position:absolute;inset:-14px;border-radius:50%;border:2px solid color-mix(in srgb,var(--o1) 40%,transparent);animation:ring var(--sp) ease-out infinite}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+  @keyframes ring{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.35);opacity:0}}
+  .headline{margin-top:22px;font-size:23px;font-weight:800;letter-spacing:.4px;text-align:center}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  .mic{margin-top:20px;width:70px;height:70px;border-radius:50%;border:1px solid rgba(255,255,255,.15);
+    background:rgba(255,255,255,.06);color:var(--txt);font-size:29px;cursor:pointer;transition:transform .15s}
+  .mic:hover{transform:scale(1.06)}
+  .mic.on{background:#ef444422;border-color:#ef4444;color:#fca5a5;animation:mic 1s ease-in-out infinite}
+  @keyframes mic{0%,100%{box-shadow:0 0 0 0 #ef444455}50%{box-shadow:0 0 0 14px #ef444400}}
+  .hint{margin-top:10px;color:var(--muted);font-size:12.5px;max-width:460px;text-align:center;line-height:1.5}
+  .heard{margin-top:6px;color:#cbd5e1;font-size:14px;font-style:italic;min-height:20px}
+  .mute{position:fixed;top:16px;left:16px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:7px 12px;cursor:pointer;font-size:13px}
+  .grid{display:grid;grid-template-columns:1.3fr .9fr;gap:16px;margin-top:24px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+  .card h3{margin:0 0 12px;font-size:15px;color:#cbd5e1}
+  .step{display:flex;align-items:center;gap:10px;font-size:14px;margin:7px 0}
+  .step .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:rgba(255,255,255,.06);flex-shrink:0}
+  .step a{color:#38bdf8;text-decoration:none}
+  .wf{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+  .pill{padding:5px 10px;border-radius:999px;font-size:12px;border:1px solid rgba(255,255,255,.1)}
+  .pill.cur{background:#f59e0b22;border-color:#f59e0b;color:#fbbf24}
+  .pill.ok{background:#10b98122;border-color:#10b981;color:#34d399}
+  .pill.no{opacity:.45;text-decoration:line-through}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+  .feed{display:flex;flex-direction:column;max-height:360px;overflow:auto}
+  .feed .row{display:flex;gap:9px;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.05);font-size:13.5px}
+  .feed .t{color:#64748b;font-size:11px;white-space:nowrap;margin-inline-start:auto}
+  .rel{background:#f59e0b14;border:1px solid #f59e0b55;border-radius:10px;padding:8px 10px;margin-bottom:6px;font-size:13px}
+  .muted{color:var(--muted)}
+</style>
+</head>
+<body>
+  <button class="mute" id="mute">🔊 קול פעיל</button>
+  <div class="wrap">
+    <div class="stage">
+      <div class="orb" id="orb" style="--o1:#3b82f6;--o2:#22d3ee;--sp:6s"></div>
+      <div class="headline" id="headline">מתחבר…</div>
+      <div class="sub">נדב — מרכז תפעול חי · דרסו</div>
+      <button class="mic" id="mic" title="דבר עם נדב">🎤</button>
+      <div class="hint" id="hint">לחץ ודבר: "פתח משלוח קיה ספורטאז ממגרש אשדוד למוסך ראשל״צ" · "מה קורה עם המשלוח" · "אשר"</div>
+      <div class="heard" id="heard"></div>
+    </div>
+    <div class="grid">
+      <div class="card"><h3>🚚 משלוח פעיל</h3><div id="dispatch"></div></div>
+      <div class="card"><h3>⚡ פעילות חיה</h3><div class="feed" id="feed"></div></div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB_URL='https://jfvkwfvuvvcpeawxgiaq.supabase.co';
+const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impmdmt3ZnZ1dnZjcGVhd3hnaWFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MTc4OTEsImV4cCI6MjEwMTE5Mzg5MX0.dBGFYx3LlSVOjUfEjBDERyAcZDVUeRpc5Dj0kAHVnVI';
+const KEY='nadav-derso-live-8x2k9qz7';
+const sb=supabase.createClient(SB_URL,SB_ANON);
+const PH={idle:['#3b82f6','#22d3ee','6s','נדב מוכן'],draft:['#8b5cf6','#3b82f6','3s','ממתין לאישור…'],dispatching:['#f59e0b','#ef4444','1.4s','משגר שליחים…'],accepted:['#10b981','#22d3ee','4s','שליח שובץ! 🎉'],failed:['#ef4444','#f59e0b','2s','אף שליח לא אישר']};
+let muted=false, lastTs=0;
+const $=id=>document.getElementById(id);
+const fmt=n=>n?'₪'+Number(n).toLocaleString('he-IL'):'';
+
+$('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇 קול כבוי':'🔊 קול פעיל';};
+
+function speak(t){if(muted||!window.speechSynthesis)return;try{const u=new SpeechSynthesisUtterance(t);u.lang='he-IL';u.rate=1.02;const v=speechSynthesis.getVoices().find(x=>/he|iw/i.test(x.lang));if(v)u.voice=v;speechSynthesis.speak(u);}catch(e){}}
+
+function render(s){
+  const p=PH[s.phase]||PH.idle;
+  $('orb').style.cssText='--o1:'+p[0]+';--o2:'+p[1]+';--sp:'+p[2];
+  $('headline').textContent=s.headline||p[3];
+  const d=s.dispatch, cs=s.couriers||[];
+  if(!d){$('dispatch').innerHTML='<div class="muted" style="font-size:14px">אין משלוח פעיל.<br>אמור: "פתח משלוח &lt;רכב&gt; מ&lt;מגרש&gt; ל&lt;יעד&gt;"</div>';}
+  else{
+    const r=d.route||{};
+    const gas=r.gasStop?('⛽ תדלוק: '+r.gasStop.name+' <a href="'+r.gasStop.wazeUrl+'" target="_blank">Waze</a>'):'⛽ תדלוק בדרך';
+    const wash=r.washStop?('🧼 שטיפה: '+r.washStop.name+' <a href="'+r.washStop.wazeUrl+'" target="_blank">Waze</a>'):'🧼 שטיפה בדרך';
+    const badge=d.status==='accepted'?'<span class="badge" style="background:#10b98122;color:#34d399">✅ שובץ: '+(d.acceptedBy&&d.acceptedBy.name||'')+'</span>':d.status==='failed'?'<span class="badge" style="background:#ef444422;color:#f87171">⚠️ אף שליח לא אישר</span>':'<span class="badge" style="background:#f59e0b22;color:#fbbf24">📤 משגר… ('+((d.idx||0)+1)+'/'+d.total+')</span>';
+    const pills=cs.map((c,i)=>'<span class="pill '+(d.status==='accepted'&&d.acceptedBy&&d.acceptedBy.name===c.name?'ok':d.status==='dispatching'&&i===d.idx?'cur':i<(d.idx||0)?'no':'')+'">'+c.name+'</span>').join('');
+    $('dispatch').innerHTML='<div style="font-size:18px;font-weight:800;margin-bottom:8px">'+d.car+'</div>'+
+      '<div class="step"><span class="ic">📍</span> איסוף: '+d.from+'</div>'+
+      '<div class="step"><span class="ic">⛽</span> '+gas+'</div>'+
+      '<div class="step"><span class="ic">🧼</span> '+wash+'</div>'+
+      '<div class="step"><span class="ic">🏁</span> מסירה: '+d.to+'</div>'+
+      (r.routeUrl?'<div class="step"><span class="ic">🗺️</span> <a href="'+r.routeUrl+'" target="_blank">מסלול מלא</a></div>':'')+
+      (d.notes?'<div class="muted" style="font-size:13px;margin-top:6px">📝 '+d.notes+'</div>':'')+
+      '<div style="margin-top:12px">'+badge+'</div>'+(pills?'<div class="wf">'+pills+'</div>':'');
+  }
+  const ev=s.events||[];
+  $('feed').innerHTML=(s.releases||[]).map(r=>'<div class="rel">📩 אישור שחרור: '+r.car+(r.yard?' ב'+r.yard:'')+'</div>').join('')+
+    (ev.length?ev.map(e=>'<div class="row"><span>'+(e.icon||'•')+'</span><span>'+e.text+'</span><span class="t">'+(e.ts?new Date(e.ts).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}):'')+'</span></div>').join(''):'<div class="muted" style="padding:6px;font-size:13px">אין אירועים עדיין…</div>');
+  if(ev[0]&&ev[0].ts>lastTs){lastTs=ev[0].ts;speak(ev[0].text);}
+}
+
+async function poll(){try{const{data}=await sb.rpc('nadav_public_state',{p_key:KEY});if(data&&!data.error)render(data);}catch(e){}}
+poll();setInterval(poll,3000);
+
+// Voice
+let rec=null,listening=false;
+$('mic').onclick=()=>{
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('הדפדפן לא תומך בזיהוי דיבור — נסה Chrome');return;}
+  if(listening){try{rec.stop();}catch(e){}return;}
+  rec=new SR();rec.lang='he-IL';rec.interimResults=true;rec.maxAlternatives=1;rec.continuous=false;
+  rec.onresult=e=>{let t='';for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;$('heard').textContent='“'+t+'”';if(e.results[e.results.length-1].isFinal)send(t);};
+  rec.onerror=()=>setL(false);rec.onend=()=>setL(false);
+  try{speechSynthesis.cancel();}catch(e){}
+  $('heard').textContent='';setL(true);try{rec.start();}catch(e){setL(false);}
+};
+function setL(v){listening=v;$('mic').className='mic'+(v?' on':'');$('mic').textContent=v?'🎙️':'🎤';$('hint').textContent=v?'מקשיב… דבר עכשיו':'לחץ ודבר: "פתח משלוח…" · "מה קורה" · "אשר"';}
+async function send(t){t=(t||'').trim();if(!t)return;$('hint').textContent='שולח לנדב…';try{await sb.rpc('nadav_public_command',{p_key:KEY,p_text:t});}catch(e){}}
+</script>
+</body>
+</html>
