@@ -25,7 +25,10 @@ export async function middleware(request) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isPublic = path.startsWith('/login') || path.startsWith('/r/') || path.startsWith('/call/') || path.startsWith('/auth/') || path.startsWith('/_next') || path.startsWith('/favicon') || path.startsWith('/terms') || path.startsWith('/privacy') || path.startsWith('/disclaimer') || path.startsWith('/nadav') || path.startsWith('/api/');
+  // nadav.derso.net הוא אתר נדב הציבורי — אין עליו התחברות; כל נתיב פתוח.
+  const host = request.headers.get('host') || '';
+  const isNadavHost = host === 'nadav.derso.net';
+  const isPublic = isNadavHost || path.startsWith('/login') || path.startsWith('/r/') || path.startsWith('/call/') || path.startsWith('/auth/') || path.startsWith('/_next') || path.startsWith('/favicon') || path.startsWith('/terms') || path.startsWith('/privacy') || path.startsWith('/disclaimer') || path.startsWith('/nadav') || path.startsWith('/api/');
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
