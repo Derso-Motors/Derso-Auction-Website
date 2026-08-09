@@ -18,14 +18,6 @@ function firstDayOfWeek(year, month) {
   return new Date(year, month, 1).getDay();
 }
 
-/**
- * @param {Object} props
- * @param {string} props.name
- * @param {boolean} props.required
- * @param {boolean} props.includeTime
- * @param {string} props.defaultValue
- * @param {string[]} props.bookedSlots - ISO datetime strings of booked meetings
- */
 export default function DateTimePicker({ name, required, includeTime = false, defaultValue, bookedSlots = [] }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState('date');
@@ -39,7 +31,8 @@ export default function DateTimePicker({ name, required, includeTime = false, de
   const [selectedHour, setSelectedHour] = useState(null);
   const [selectedMinute, setSelectedMinute] = useState(null);
 
-  // Build a Set of booked slot keys like "2026-08-11T10:15" for fast lookup
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
   const bookedSet = new Set(
     bookedSlots.map((iso) => {
       const d = new Date(iso);
@@ -47,7 +40,6 @@ export default function DateTimePicker({ name, required, includeTime = false, de
     })
   );
 
-  // Count booked slots per date for showing dots on calendar
   const bookedByDate = {};
   bookedSlots.forEach((iso) => {
     const d = new Date(iso);
@@ -90,6 +82,7 @@ export default function DateTimePicker({ name, required, includeTime = false, de
 
   function pickDate(day) {
     const ds = `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`;
+    if (ds < todayStr) return;
     setSelectedDate(ds);
     if (includeTime) {
       setStep('time');
@@ -107,7 +100,6 @@ export default function DateTimePicker({ name, required, includeTime = false, de
 
   const totalDays = daysInMonth(viewYear, viewMonth);
   const startDay = firstDayOfWeek(viewYear, viewMonth);
-  const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 
   let hiddenValue = '';
   if (selectedDate) {
@@ -137,6 +129,12 @@ export default function DateTimePicker({ name, required, includeTime = false, de
   function isBooked(h, m) {
     if (!selectedDate) return false;
     return bookedSet.has(`${selectedDate}T${pad(h)}:${pad(m)}`);
+  }
+
+  function isPastTime(h, m) {
+    if (!selectedDate || selectedDate !== todayStr) return false;
+    const now = new Date();
+    return h < now.getHours() || (h === now.getHours() && m <= now.getMinutes());
   }
 
   function isCallHour(h) {
@@ -174,15 +172,17 @@ export default function DateTimePicker({ name, required, includeTime = false, de
               const ds = `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`;
               const isToday = ds === todayStr;
               const isSelected = ds === selectedDate;
+              const isPast = ds < todayStr;
               const count = bookedByDate[ds] || 0;
               return (
                 <button
                   key={day} type="button"
-                  className={`dtp-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}`}
-                  onClick={() => pickDate(day)}
+                  disabled={isPast}
+                  className={`dtp-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${isPast ? 'past' : ''}`}
+                  onClick={() => !isPast && pickDate(day)}
                 >
                   {day}
-                  {count > 0 && <span className="dtp-day-dot" title={`${count} פגישות`} />}
+                  {count > 0 && !isPast && <span className="dtp-day-dot" title={`${count} פגישות`} />}
                 </button>
               );
             })}
@@ -210,19 +210,22 @@ export default function DateTimePicker({ name, required, includeTime = false, de
           <div className="dtp-time-grid">
             {hours.map(({ h, m, label }) => {
               const booked = isBooked(h, m);
+              const past = isPastTime(h, m);
+              const disabled = booked || past;
               const call = isCallHour(h);
               return (
                 <button
                   key={label} type="button" dir="ltr"
-                  disabled={booked}
+                  disabled={disabled}
                   className={[
                     'dtp-time',
                     selectedHour === h && selectedMinute === m ? 'selected' : '',
                     booked ? 'booked' : '',
-                    call && !booked ? 'call-hour' : '',
+                    past && !booked ? 'past' : '',
+                    call && !disabled ? 'call-hour' : '',
                   ].filter(Boolean).join(' ')}
-                  onClick={() => !booked && pickTime(h, m)}
-                  title={booked ? 'השעה תפוסה' : call ? 'שעות שיחות אפיון' : ''}
+                  onClick={() => !disabled && pickTime(h, m)}
+                  title={booked ? 'השעה תפוסה' : past ? 'עבר' : call ? 'שעות שיחות אפיון' : ''}
                 >
                   {label}
                 </button>
@@ -245,6 +248,13 @@ export default function DateTimePicker({ name, required, includeTime = false, de
           background: rgba(255,100,100,0.10) !important;
           transform: none !important;
         }
+        .dtp-time.past {
+          opacity: 0.25;
+          cursor: not-allowed;
+        }
+        .dtp-time.past:hover {
+          transform: none !important;
+        }
         .dtp-time.call-hour {
           background: rgba(99,179,237,0.10);
           border-color: rgba(99,179,237,0.25);
@@ -265,6 +275,11 @@ export default function DateTimePicker({ name, required, includeTime = false, de
         }
         .dtp-day {
           position: relative;
+        }
+        .dtp-day.past {
+          opacity: 0.25;
+          cursor: not-allowed;
+          pointer-events: none;
         }
       `}</style>
     </div>

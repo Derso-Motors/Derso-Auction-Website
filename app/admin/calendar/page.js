@@ -9,6 +9,14 @@ import { timeAgo } from '../../../lib/utils';
 
 export const dynamic = 'force-dynamic';
 
+const LOCATION_OPTIONS = [
+  { value: 'טלפון', label: 'טלפון' },
+  { value: 'פגישה במשרדנו', label: 'פגישה במשרדנו' },
+  { value: 'שיחת וידאו', label: 'שיחת וידאו' },
+  { value: 'שיחת מכרז טלפונית', label: 'שיחת מכרז טלפונית' },
+  { value: 'פגישת מכרז פרונטלית במשרד', label: 'פגישת מכרז פרונטלית במשרד' },
+];
+
 async function requireAdmin() {
   const { supabase, user } = await requireUser();
   const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
@@ -50,7 +58,8 @@ async function addMeeting(formData) {
   if (phone) {
     const dateStr = scheduledAt.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
     const timeStr = scheduledAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-    const msg = `שלום ${name || ''},\nנקבעה פגישה חדשה:\n📋 ${title}\n📅 ${dateStr} בשעה ${timeStr}${location ? `\n📍 ${location}` : ''}${notes ? `\n📝 ${notes}` : ''}\n\n_דרסו — בית ליווי מקצועי למכרזים_`;
+    const locEmoji = location === 'שיחת וידאו' ? '📹' : location?.includes('משרד') ? '🏢' : '📞';
+    const msg = `שלום ${name || ''},\nנקבעה פגישה חדשה:\n📋 ${title}\n📅 ${dateStr} בשעה ${timeStr}\n${locEmoji} ${location || 'טלפון'}${notes ? `\n📝 ${notes}` : ''}\n\n_דרסו — בית ליווי מקצועי למכרזים_`;
     await sendWhatsApp(phone, msg);
   }
 
@@ -77,7 +86,6 @@ export default async function CalendarPage() {
 
   const clientOptions = clients || [];
 
-  // Pass booked slot times to the DateTimePicker so it can disable them
   const bookedSlots = (meetings || [])
     .filter((m) => new Date(m.scheduled_at) >= new Date())
     .map((m) => m.scheduled_at);
@@ -95,7 +103,7 @@ export default async function CalendarPage() {
             {meetings?.length > 0 && (
               <div className="table-wrap">
                 <table className="data">
-                  <thead><tr><th>נושא</th><th>לקוח</th><th>טלפון</th><th>תאריך</th><th>שעה</th><th>מיקום</th><th>הערות</th><th>סטטוס</th><th></th></tr></thead>
+                  <thead><tr><th>נושא</th><th>לקוח</th><th>טלפון</th><th>תאריך</th><th>שעה</th><th>סוג</th><th>הערות</th><th>סטטוס</th><th></th></tr></thead>
                   <tbody>
                     {meetings.map((m) => {
                       const d = new Date(m.scheduled_at);
@@ -142,9 +150,14 @@ export default async function CalendarPage() {
               <div className="field"><label>שם לקוח (ללא רשום)</label><input name="client_name" placeholder="שם הלקוח" /></div>
               <div className="field"><label>טלפון לקוח</label><input name="client_phone" placeholder="050-1234567" dir="ltr" /></div>
               <div className="field"><label>נושא</label><input name="title" required /></div>
-              <div className="field"><label>הערות / קריטריונים</label><textarea name="notes" rows={2} placeholder="רכב מתחת למחירון, סוזוקי 2020+, וכו׳" style={{ resize: 'vertical' }} /></div>
+              <div className="field"><label>הערות / קריטריונים</label><textarea name="notes" rows={2} placeholder="רכב מתחת למחירון, סוזוקי 2020+ וכו׳" style={{ resize: 'vertical' }} /></div>
               <div className="field"><label>מועד</label><DateTimePicker name="scheduled_at" required includeTime bookedSlots={bookedSlots} /></div>
-              <div className="field"><label>מיקום</label><input name="location" /></div>
+              <div className="field">
+                <label>סוג פגישה</label>
+                <select name="location" required>
+                  {LOCATION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
               <SubmitButton className="btn">קביעת פגישה + שליחת וואטסאפ</SubmitButton>
             </form>
           </div>
