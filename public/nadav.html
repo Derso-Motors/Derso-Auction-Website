@@ -84,11 +84,16 @@ const SB='https://jfvkwfvuvvcpeawxgiaq.supabase.co';
 const ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impmdmt3ZnZ1dnZjcGVhd3hnaWFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MTc4OTEsImV4cCI6MjEwMTE5Mzg5MX0.dBGFYx3LlSVOjUfEjBDERyAcZDVUeRpc5Dj0kAHVnVI';
 const KEY='nadav-derso-live-8x2k9qz7';
 const PH={idle:['#3b82f6','#22d3ee','6s','נדב מוכן'],draft:['#8b5cf6','#3b82f6','3s','ממתין לאישור…'],dispatching:['#f59e0b','#ef4444','1.4s','משגר שליחים…'],accepted:['#10b981','#22d3ee','4s','שליח שובץ! 🎉'],failed:['#ef4444','#f59e0b','2s','אף שליח לא אישר']};
-let muted=false,lastTs=0,connected=false;
+let muted=false,lastTs=0,connected=false,lastOpenTs=0,firstRender=true;
 const $=id=>document.getElementById(id);
 
 $('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇 קול כבוי':'🔊 קול פעיל';};
-function speak(t){if(muted||!window.speechSynthesis)return;try{const u=new SpeechSynthesisUtterance(t);u.lang='he-IL';u.rate=1.02;const v=speechSynthesis.getVoices().find(x=>/he|iw/i.test(x.lang));if(v)u.voice=v;speechSynthesis.speak(u);}catch(e){}}
+// Hebrew TTS — getVoices() is async and empty on first call, so cache and re-scan
+// on voiceschanged; otherwise the browser reads Hebrew text with an English voice.
+let HE_VOICE=null;
+function pickHeVoice(){try{const vs=speechSynthesis.getVoices()||[];HE_VOICE=vs.find(x=>/he[-_]?il/i.test(x.lang))||vs.find(x=>/^(he|iw)\b/i.test(x.lang))||vs.find(x=>/hebrew|עברית/i.test(x.name))||null;}catch(e){}}
+if(window.speechSynthesis){pickHeVoice();speechSynthesis.onvoiceschanged=pickHeVoice;}
+function speak(t){if(muted||!window.speechSynthesis||!t)return;try{if(!HE_VOICE)pickHeVoice();const u=new SpeechSynthesisUtterance(t);u.lang='he-IL';u.rate=1.02;if(HE_VOICE)u.voice=HE_VOICE;speechSynthesis.speak(u);}catch(e){}}
 function term(cls,txt){const el=$('term');const d=document.createElement('div');d.className='l '+cls;const ts=new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});d.textContent='['+ts+'] '+txt;el.appendChild(d);el.scrollTop=el.scrollHeight;while(el.children.length>200)el.removeChild(el.firstChild);}
 
 // Direct Supabase REST — no external library (avoids CDN/CSP failure that left it "מתחבר").
@@ -125,6 +130,20 @@ function render(s){
   const fresh=ev.filter(e=>e.ts&&e.ts>lastTs).sort((a,b)=>a.ts-b.ts);
   for(const e of fresh)term('out',(e.icon||'•')+' '+e.text);
   if(fresh.length){lastTs=fresh[fresh.length-1].ts;speak(fresh[fresh.length-1].text);}
+  // "נדב פותח" — כשנדב פותר יעד ללינק, פותחים אותו בדפדפן ומציגים קישור לחיץ.
+  const op=s.open;
+  if(op&&op.ts&&op.ts>lastOpenTs){
+    lastOpenTs=op.ts;
+    if(!firstRender){                              // אל תפתח יעד ישן בטעינה ראשונה
+      const link='<a href="'+op.url+'" target="_blank" rel="noopener">'+(op.label||op.url)+' ↗</a>';
+      const el=document.createElement('div');el.className='l out';
+      el.innerHTML='['+new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'] 🔗 פותח: '+link+' — <span class="sys" style="direction:rtl">'+op.url+'</span>';
+      $('term').appendChild(el);$('term').scrollTop=$('term').scrollHeight;
+      const w=window.open(op.url,'_blank');        // ניסיון פתיחה אוטומטי (ייתכן חסום ע"י דפדפן → הקישור מעליו)
+      speak((op.label||'')+' — פתחתי');
+    }
+  }
+  firstRender=false;
 }
 
 async function poll(){

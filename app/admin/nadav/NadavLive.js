@@ -39,7 +39,8 @@ export default function NadavLive({ initial }) {
     try {
       const u = new SpeechSynthesisUtterance(ev.text);
       u.lang = 'he-IL'; u.rate = 1.02;
-      const he = window.speechSynthesis.getVoices().find((v) => /he|iw/i.test(v.lang));
+      const vs = window.speechSynthesis.getVoices() || [];
+      const he = vs.find((v) => /he[-_]?il/i.test(v.lang)) || vs.find((v) => /^(he|iw)\b/i.test(v.lang)) || vs.find((v) => /hebrew|עברית/i.test(v.name));
       if (he) u.voice = he;
       window.speechSynthesis.speak(u);
     } catch {}
