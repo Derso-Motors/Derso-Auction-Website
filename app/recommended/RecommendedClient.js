@@ -41,10 +41,11 @@ export default function RecommendedClient({ initialCars }) {
       if (data?.error === 'already_requested') {
         showToast('כבר ביקשת מכרז על הרכב הזה — הוא בפגישות שלך.', false);
       } else {
-        showToast('לא הצלחנו לקבוע כרגע. נסה שוב או פנה אלינו בצ\'אט.', true);
+        showToast('לא הצלחנו לקבוע כרגע. נסה שוב או פנה אלינו בצ׳אט.', true);
       }
       return;
     }
+    // optimistic update the card
     setCars((prev) => prev.map((c) => (c.id === car.id ? { ...c, client_interest: 'interested' } : c)));
     showToast(data.scheduled
       ? '🎉 המכרז נוסף לפגישות שלך וליומן שלנו — שלחנו אישור בוואטסאפ!'

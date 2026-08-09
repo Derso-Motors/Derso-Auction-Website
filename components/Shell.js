@@ -40,6 +40,7 @@ const ADMIN_NAV = [
   { href: '/admin/marketplace', key: 'marketplace', label: 'העלאה למכירה', icon: 'marketplace' },
   { href: '/admin/inventory', key: 'inventory', label: 'מאגר רכבים', icon: 'inventory' },
   { href: '/admin/broadcasts', key: 'broadcasts', label: 'שידורים', icon: 'broadcast' },
+  { href: '/admin/credentials', key: 'credentials', label: 'משתמשים ללקוחות', icon: 'settings' },
   { href: '/admin/tasks', key: 'tasks', label: 'משימות והיום', icon: 'tasks' },
   { href: '/admin/nadav', key: 'nadav', label: 'נדב — תפעול', icon: 'broadcast' },
 ];
