@@ -15,6 +15,10 @@ export default function NadavLive({ initial }) {
   const [state, setState] = useState(initial || {});
   const [muted, setMuted] = useState(false);
   const lastSpokenTs = useRef(0);
+  const [listening, setListening] = useState(false);
+  const [heard, setHeard] = useState('');
+  const [sending, setSending] = useState(false);
+  const recRef = useRef(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -40,6 +44,44 @@ export default function NadavLive({ initial }) {
       window.speechSynthesis.speak(u);
     } catch {}
   }, [state.events, muted]);
+
+  // ── Voice input: speak a command → write it to nadav_commands; the office bot
+  // polls it, maps it onto the existing owner grammar, and runs it. The reply
+  // comes back as an event on nadav_state and is spoken by the effect above.
+  const sendCommand = async (text) => {
+    const t = (text || '').trim();
+    if (!t) return;
+    setSending(true);
+    try {
+      await fetch('/api/nadav/commands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: t }),
+      });
+    } catch {}
+    setSending(false);
+  };
+
+  const toggleListen = () => {
+    if (typeof window === 'undefined') return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('הדפדפן לא תומך בזיהוי דיבור — נסה Chrome'); return; }
+    if (listening) { try { recRef.current?.stop(); } catch {} return; }
+    const rec = new SR();
+    rec.lang = 'he-IL'; rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = false;
+    rec.onresult = (e) => {
+      let txt = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) txt += e.results[i][0].transcript;
+      setHeard(txt);
+      if (e.results[e.results.length - 1].isFinal) sendCommand(txt);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    recRef.current = rec;
+    try { window.speechSynthesis?.cancel(); } catch {} // don't record Nadav's own voice
+    setHeard(''); setListening(true);
+    try { rec.start(); } catch { setListening(false); }
+  };
 
   const phase = PHASES[state.phase] || PHASES.idle;
   const d = state.dispatch;
@@ -82,6 +124,14 @@ export default function NadavLive({ initial }) {
         .nadav-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
         .nadav-mute{position:fixed;top:70px;inset-inline-end:20px;background:rgba(255,255,255,.06);
           border:1px solid rgba(255,255,255,.12);color:#e5e7eb;border-radius:10px;padding:7px 12px;cursor:pointer;font-size:13px}
+
+        .nadav-mic{margin-top:18px;width:66px;height:66px;border-radius:50%;border:1px solid rgba(255,255,255,.15);
+          background:rgba(255,255,255,.06);color:#e5e7eb;font-size:27px;cursor:pointer;transition:transform .15s}
+        .nadav-mic:hover{transform:scale(1.06)}
+        .nadav-mic.on{background:#ef444422;border-color:#ef4444;color:#fca5a5;animation:nadavMic 1s ease-in-out infinite}
+        @keyframes nadavMic{0%,100%{box-shadow:0 0 0 0 #ef444455}50%{box-shadow:0 0 0 14px #ef444400}}
+        .nadav-hint{margin-top:10px;color:#94a3b8;font-size:12.5px;max-width:440px;text-align:center;line-height:1.5}
+        .nadav-heard{margin-top:6px;color:#cbd5e1;font-size:14px;font-style:italic}
       `}</style>
 
       <button className="nadav-mute" onClick={() => setMuted((m) => !m)}>
@@ -92,6 +142,14 @@ export default function NadavLive({ initial }) {
         <div className="nadav-orb" style={{ '--o1': phase.c1, '--o2': phase.c2, '--o-speed': phase.speed }} />
         <div className="nadav-headline">{state.headline || phase.label}</div>
         <div className="nadav-sub">נדב — מרכז תפעול חי</div>
+
+        <button className={'nadav-mic' + (listening ? ' on' : '')} onClick={toggleListen} title="דבר עם נדב">
+          {listening ? '🎙️' : '🎤'}
+        </button>
+        <div className="nadav-hint">
+          {listening ? 'מקשיב… דבר עכשיו' : sending ? 'שולח לנדב…' : 'לחץ ודבר: "פתח משלוח קיה ספורטאז ממגרש אשדוד למוסך ראשלצ" · "מה קורה עם המשלוח" · "אשר"'}
+        </div>
+        {heard && <div className="nadav-heard">“{heard}”</div>}
       </div>
 
       <div className="nadav-grid">
