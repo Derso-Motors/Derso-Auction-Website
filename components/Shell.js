@@ -101,7 +101,7 @@ export default async function Shell({ children, active }) {
         {children}
       </main>
 
-      <AssistantWidget isAdmin={isAdmin} />
+      {(isAdmin || profile?.ai_assistant_active) && <AssistantWidget isAdmin={isAdmin} />}
       <PageToast />
       <AutoRefresh />
       <SidebarTips />
