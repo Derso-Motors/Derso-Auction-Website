@@ -26,6 +26,7 @@ async function addMeeting(formData) {
   const location = formData.get('location') || null;
   const clientName = isWalkIn ? (formData.get('client_name') || 'לקוח חד-פעמי') : null;
   const clientPhone = isWalkIn ? (formData.get('client_phone') || null) : null;
+  const notes = formData.get('notes') || null;
 
   const { error } = await supabase.from('meetings').insert({
     client_id: isWalkIn ? null : clientId,
@@ -34,6 +35,7 @@ async function addMeeting(formData) {
     location,
     client_name: clientName,
     client_phone: clientPhone,
+    notes,
   });
   if (error) redirect('/admin/calendar?err=' + encodeURIComponent('שגיאה בקביעת הפגישה'));
 
@@ -48,7 +50,7 @@ async function addMeeting(formData) {
   if (phone) {
     const dateStr = scheduledAt.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
     const timeStr = scheduledAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-    const msg = `שלום ${name || ''},\nנקבעה פגישה חדשה:\n📋 ${title}\n📅 ${dateStr} בשעה ${timeStr}${location ? `\n📍 ${location}` : ''}\n\nדרסו — בית ליווי מקצועי למכרזים`;
+    const msg = `שלום ${name || ''},\nנקבעה פגישה חדשה:\n📋 ${title}\n📅 ${dateStr} בשעה ${timeStr}${location ? `\n📍 ${location}` : ''}${notes ? `\n📝 ${notes}` : ''}\n\n_דרסו — בית ליווי מקצועי למכרזים_`;
     await sendWhatsApp(phone, msg);
   }
 
@@ -75,6 +77,11 @@ export default async function CalendarPage() {
 
   const clientOptions = clients || [];
 
+  // Pass booked slot times to the DateTimePicker so it can disable them
+  const bookedSlots = (meetings || [])
+    .filter((m) => new Date(m.scheduled_at) >= new Date())
+    .map((m) => m.scheduled_at);
+
   return (
     <Shell active="calendar">
       <div className="page-title">יומן פגישות</div>
@@ -88,7 +95,7 @@ export default async function CalendarPage() {
             {meetings?.length > 0 && (
               <div className="table-wrap">
                 <table className="data">
-                  <thead><tr><th>נושא</th><th>לקוח</th><th>תאריך</th><th>שעה</th><th>מיקום</th><th>סטטוס</th><th>לפני</th><th></th></tr></thead>
+                  <thead><tr><th>נושא</th><th>לקוח</th><th>טלפון</th><th>תאריך</th><th>שעה</th><th>מיקום</th><th>הערות</th><th>סטטוס</th><th></th></tr></thead>
                   <tbody>
                     {meetings.map((m) => {
                       const d = new Date(m.scheduled_at);
@@ -97,13 +104,14 @@ export default async function CalendarPage() {
                         <tr key={m.id} style={{ opacity: isPast ? 0.5 : 1 }}>
                           <td style={{ fontWeight: 600 }}>{m.title}</td>
                           <td>{m.profiles?.full_name || m.client_name || '—'}</td>
+                          <td dir="ltr" style={{ fontSize: 12 }}>{m.client_phone || '—'}</td>
                           <td>{d.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
                           <td style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: 'var(--primary)' }}>
                             {d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                           </td>
                           <td>{m.location || '—'}</td>
+                          <td className="muted" style={{ fontSize: 12, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.notes || '—'}</td>
                           <td><span className={`badge ${isPast ? 'done' : 'in_progress'}`}>{isPast ? 'עבר' : 'מתוכנן'}</span></td>
-                          <td className="muted">{timeAgo(m.scheduled_at)}</td>
                           <td>
                             <form action={deleteMeeting}>
                               <input type="hidden" name="id" value={m.id} />
@@ -134,7 +142,8 @@ export default async function CalendarPage() {
               <div className="field"><label>שם לקוח (ללא רשום)</label><input name="client_name" placeholder="שם הלקוח" /></div>
               <div className="field"><label>טלפון לקוח</label><input name="client_phone" placeholder="050-1234567" dir="ltr" /></div>
               <div className="field"><label>נושא</label><input name="title" required /></div>
-              <div className="field"><label>מועד</label><DateTimePicker name="scheduled_at" required includeTime /></div>
+              <div className="field"><label>הערות / קריטריונים</label><textarea name="notes" rows={2} placeholder="רכב מתחת למחירון, סוזוקי 2020+, וכו׳" style={{ resize: 'vertical' }} /></div>
+              <div className="field"><label>מועד</label><DateTimePicker name="scheduled_at" required includeTime bookedSlots={bookedSlots} /></div>
               <div className="field"><label>מיקום</label><input name="location" /></div>
               <SubmitButton className="btn">קביעת פגישה + שליחת וואטסאפ</SubmitButton>
             </form>
@@ -147,6 +156,7 @@ export default async function CalendarPage() {
             </div>
             <div className="muted" style={{ fontSize: 12 }}>
               בקביעת פגישה, הודעת וואטסאפ נשלחת אוטומטית ללקוח עם פרטי הפגישה מהמספר +972 55-950-6913.
+              <br />תזכורות נשלחות יום לפני ו-15 דקות לפני הפגישה.
             </div>
           </div>
         </div>

@@ -18,7 +18,15 @@ function firstDayOfWeek(year, month) {
   return new Date(year, month, 1).getDay();
 }
 
-export default function DateTimePicker({ name, required, includeTime = false, defaultValue }) {
+/**
+ * @param {Object} props
+ * @param {string} props.name
+ * @param {boolean} props.required
+ * @param {boolean} props.includeTime
+ * @param {string} props.defaultValue
+ * @param {string[]} props.bookedSlots - ISO datetime strings of booked meetings
+ */
+export default function DateTimePicker({ name, required, includeTime = false, defaultValue, bookedSlots = [] }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState('date');
   const ref = useRef(null);
@@ -30,6 +38,22 @@ export default function DateTimePicker({ name, required, includeTime = false, de
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedHour, setSelectedHour] = useState(null);
   const [selectedMinute, setSelectedMinute] = useState(null);
+
+  // Build a Set of booked slot keys like "2026-08-11T10:15" for fast lookup
+  const bookedSet = new Set(
+    bookedSlots.map((iso) => {
+      const d = new Date(iso);
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    })
+  );
+
+  // Count booked slots per date for showing dots on calendar
+  const bookedByDate = {};
+  bookedSlots.forEach((iso) => {
+    const d = new Date(iso);
+    const key = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    bookedByDate[key] = (bookedByDate[key] || 0) + 1;
+  });
 
   useEffect(() => {
     if (defaultValue) {
@@ -110,6 +134,15 @@ export default function DateTimePicker({ name, required, includeTime = false, de
     }
   }
 
+  function isBooked(h, m) {
+    if (!selectedDate) return false;
+    return bookedSet.has(`${selectedDate}T${pad(h)}:${pad(m)}`);
+  }
+
+  function isCallHour(h) {
+    return h >= 12 && h < 16;
+  }
+
   return (
     <div className="dtp-wrap" ref={ref}>
       <input type="hidden" name={name} value={hiddenValue} required={required} />
@@ -141,6 +174,7 @@ export default function DateTimePicker({ name, required, includeTime = false, de
               const ds = `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`;
               const isToday = ds === todayStr;
               const isSelected = ds === selectedDate;
+              const count = bookedByDate[ds] || 0;
               return (
                 <button
                   key={day} type="button"
@@ -148,6 +182,7 @@ export default function DateTimePicker({ name, required, includeTime = false, de
                   onClick={() => pickDate(day)}
                 >
                   {day}
+                  {count > 0 && <span className="dtp-day-dot" title={`${count} פגישות`} />}
                 </button>
               );
             })}
@@ -162,19 +197,76 @@ export default function DateTimePicker({ name, required, includeTime = false, de
             <span className="dtp-title">בחר שעה</span>
             <span />
           </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '0 12px 8px', fontSize: 11 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: 'rgba(99,179,237,0.13)', border: '1px solid rgba(99,179,237,0.3)', display: 'inline-block' }} />
+              שעות שיחות
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: 'rgba(255,100,100,0.15)', border: '1px solid rgba(255,100,100,0.3)', display: 'inline-block' }} />
+              תפוס
+            </span>
+          </div>
           <div className="dtp-time-grid">
-            {hours.map(({ h, m, label }) => (
-              <button
-                key={label} type="button" dir="ltr"
-                className={`dtp-time ${selectedHour === h && selectedMinute === m ? 'selected' : ''}`}
-                onClick={() => pickTime(h, m)}
-              >
-                {label}
-              </button>
-            ))}
+            {hours.map(({ h, m, label }) => {
+              const booked = isBooked(h, m);
+              const call = isCallHour(h);
+              return (
+                <button
+                  key={label} type="button" dir="ltr"
+                  disabled={booked}
+                  className={[
+                    'dtp-time',
+                    selectedHour === h && selectedMinute === m ? 'selected' : '',
+                    booked ? 'booked' : '',
+                    call && !booked ? 'call-hour' : '',
+                  ].filter(Boolean).join(' ')}
+                  onClick={() => !booked && pickTime(h, m)}
+                  title={booked ? 'השעה תפוסה' : call ? 'שעות שיחות אפיון' : ''}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .dtp-time.booked {
+          opacity: 0.35;
+          text-decoration: line-through;
+          cursor: not-allowed;
+          background: rgba(255,100,100,0.10) !important;
+          border-color: rgba(255,100,100,0.25) !important;
+          color: var(--muted-dim) !important;
+        }
+        .dtp-time.booked:hover {
+          background: rgba(255,100,100,0.10) !important;
+          transform: none !important;
+        }
+        .dtp-time.call-hour {
+          background: rgba(99,179,237,0.10);
+          border-color: rgba(99,179,237,0.25);
+        }
+        .dtp-time.call-hour:hover {
+          background: rgba(99,179,237,0.22);
+          border-color: rgba(99,179,237,0.4);
+        }
+        .dtp-day-dot {
+          position: absolute;
+          bottom: 2px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          background: var(--primary);
+        }
+        .dtp-day {
+          position: relative;
+        }
+      `}</style>
     </div>
   );
 }
