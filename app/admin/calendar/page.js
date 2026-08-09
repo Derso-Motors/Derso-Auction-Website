@@ -9,12 +9,55 @@ import { timeAgo } from '../../../lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-const LOCATION_OPTIONS = [
-  { value: 'טלפון', label: 'טלפון' },
-  { value: 'פגישה במשרדנו', label: 'פגישה במשרדנו' },
-  { value: 'שיחת וידאו', label: 'שיחת וידאו' },
-  { value: 'שיחת מכרז טלפונית', label: 'שיחת מכרז טלפונית' },
-  { value: 'פגישת מכרז פרונטלית במשרד', label: 'פגישת מכרז פרונטלית במשרד' },
+const MEETING_TYPES = [
+  {
+    value: 'שיחת איפיון',
+    label: '📋 שיחת איפיון',
+    location: 'טלפון',
+    emoji: '📋',
+    template: (name, title, dateStr, timeStr, notes) =>
+      `שלום ${name || ''},\nתודה על הפנייה לדרסו 🙏\n\nקבענו לך *שיחת איפיון* כדי להבין מה בדיוק אתה מחפש ולהתאים לך את המסלול הנכון.\n\n📅 ${dateStr} בשעה ${timeStr}\n📞 נתקשר אליך מהמספר שלנו${notes ? `\n📝 ${notes}` : ''}\n\nאם יש שינוי — תעדכן אותנו 👍\n\n_דרסו — בית ליווי מקצועי למכרזים_`,
+  },
+  {
+    value: 'שיחת מכרז טלפונית',
+    label: '📞 שיחת מכרז טלפונית',
+    location: 'טלפון',
+    emoji: '📞',
+    template: (name, title, dateStr, timeStr, notes) =>
+      `שלום ${name || ''},\nנקבעה לך *שיחת מכרז טלפונית* 🏎️\n\n📋 ${title}\n📅 ${dateStr} בשעה ${timeStr}\n📞 נתקשר אליך בשעה שנקבעה${notes ? `\n📝 ${notes}` : ''}\n\nנא להיות זמין/ה — השיחה חשובה לתהליך 🔑\n\n_דרסו — בית ליווי מקצועי למכרזים_`,
+  },
+  {
+    value: 'פגישת מכרז במשרד',
+    label: '🏢 פגישת מכרז במשרד',
+    location: 'פגישה במשרדנו',
+    emoji: '🏢',
+    template: (name, title, dateStr, timeStr, notes) =>
+      `שלום ${name || ''},\nנקבעה לך *פגישת מכרז במשרדנו* 🏎️\n\n📋 ${title}\n📅 ${dateStr} בשעה ${timeStr}\n🏢 המשרד שלנו${notes ? `\n📝 ${notes}` : ''}\n\nנשמח לראות אותך! נא להגיע בזמן 🙏\n\n_דרסו — בית ליווי מקצועי למכרזים_`,
+  },
+  {
+    value: 'פגישה במשרדנו',
+    label: '🤝 פגישה במשרדנו',
+    location: 'פגישה במשרדנו',
+    emoji: '🤝',
+    template: (name, title, dateStr, timeStr, notes) =>
+      `שלום ${name || ''},\nנקבעה פגישה במשרדנו 🤝\n\n📋 ${title}\n📅 ${dateStr} בשעה ${timeStr}\n🏢 המשרד שלנו${notes ? `\n📝 ${notes}` : ''}\n\nנשמח לראות אותך!\n\n_דרסו — בית ליווי מקצועי למכרזים_`,
+  },
+  {
+    value: 'שיחת וידאו',
+    label: '📹 שיחת וידאו',
+    location: 'שיחת וידאו',
+    emoji: '📹',
+    template: (name, title, dateStr, timeStr, notes) =>
+      `שלום ${name || ''},\nנקבעה לך *שיחת וידאו* 📹\n\n📋 ${title}\n📅 ${dateStr} בשעה ${timeStr}\n💻 קישור לשיחה יישלח לפני הפגישה${notes ? `\n📝 ${notes}` : ''}\n\n_דרסו — בית ליווי מקצועי למכרזים_`,
+  },
+  {
+    value: 'שיחה טלפונית',
+    label: '📱 שיחה טלפונית רגילה',
+    location: 'טלפון',
+    emoji: '📱',
+    template: (name, title, dateStr, timeStr, notes) =>
+      `שלום ${name || ''},\nנקבעה שיחה טלפונית 📱\n\n📋 ${title}\n📅 ${dateStr} בשעה ${timeStr}\n📞 נתקשר אליך${notes ? `\n📝 ${notes}` : ''}\n\n_דרסו — בית ליווי מקצועי למכרזים_`,
+  },
 ];
 
 async function requireAdmin() {
@@ -31,7 +74,9 @@ async function addMeeting(formData) {
   const isWalkIn = clientId === '__walk_in__';
   const title = formData.get('title');
   const scheduledAt = new Date(formData.get('scheduled_at'));
-  const location = formData.get('location') || null;
+  const meetingType = formData.get('meeting_type') || 'שיחה טלפונית';
+  const typeConfig = MEETING_TYPES.find((t) => t.value === meetingType) || MEETING_TYPES[MEETING_TYPES.length - 1];
+  const location = typeConfig.location;
   const clientName = isWalkIn ? (formData.get('client_name') || 'לקוח חד-פעמי') : null;
   const clientPhone = isWalkIn ? (formData.get('client_phone') || null) : null;
   const notes = formData.get('notes') || null;
@@ -40,7 +85,7 @@ async function addMeeting(formData) {
     client_id: isWalkIn ? null : clientId,
     title,
     scheduled_at: scheduledAt.toISOString(),
-    location,
+    location: meetingType,
     client_name: clientName,
     client_phone: clientPhone,
     notes,
@@ -58,8 +103,7 @@ async function addMeeting(formData) {
   if (phone) {
     const dateStr = scheduledAt.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
     const timeStr = scheduledAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-    const locEmoji = location === 'שיחת וידאו' ? '📹' : location?.includes('משרד') ? '🏢' : '📞';
-    const msg = `שלום ${name || ''},\nנקבעה פגישה חדשה:\n📋 ${title}\n📅 ${dateStr} בשעה ${timeStr}\n${locEmoji} ${location || 'טלפון'}${notes ? `\n📝 ${notes}` : ''}\n\n_דרסו — בית ליווי מקצועי למכרזים_`;
+    const msg = typeConfig.template(name, title, dateStr, timeStr, notes);
     await sendWhatsApp(phone, msg);
   }
 
@@ -108,6 +152,7 @@ export default async function CalendarPage() {
                     {meetings.map((m) => {
                       const d = new Date(m.scheduled_at);
                       const isPast = d < new Date();
+                      const typeConf = MEETING_TYPES.find((t) => t.value === m.location);
                       return (
                         <tr key={m.id} style={{ opacity: isPast ? 0.5 : 1 }}>
                           <td style={{ fontWeight: 600 }}>{m.title}</td>
@@ -117,7 +162,7 @@ export default async function CalendarPage() {
                           <td style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: 'var(--primary)' }}>
                             {d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                           </td>
-                          <td>{m.location || '—'}</td>
+                          <td>{typeConf ? `${typeConf.emoji} ${typeConf.value}` : (m.location || '—')}</td>
                           <td className="muted" style={{ fontSize: 12, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.notes || '—'}</td>
                           <td><span className={`badge ${isPast ? 'done' : 'in_progress'}`}>{isPast ? 'עבר' : 'מתוכנן'}</span></td>
                           <td>
@@ -150,14 +195,14 @@ export default async function CalendarPage() {
               <div className="field"><label>שם לקוח (ללא רשום)</label><input name="client_name" placeholder="שם הלקוח" /></div>
               <div className="field"><label>טלפון לקוח</label><input name="client_phone" placeholder="050-1234567" dir="ltr" /></div>
               <div className="field"><label>נושא</label><input name="title" required /></div>
-              <div className="field"><label>הערות / קריטריונים</label><textarea name="notes" rows={2} placeholder="רכב מתחת למחירון, סוזוקי 2020+ וכו׳" style={{ resize: 'vertical' }} /></div>
-              <div className="field"><label>מועד</label><DateTimePicker name="scheduled_at" required includeTime bookedSlots={bookedSlots} /></div>
               <div className="field">
                 <label>סוג פגישה</label>
-                <select name="location" required>
-                  {LOCATION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                <select name="meeting_type" required>
+                  {MEETING_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
+              <div className="field"><label>הערות / קריטריונים</label><textarea name="notes" rows={2} placeholder="רכב מתחת למחירון, סוזוקי 2020+ וכו׳" style={{ resize: 'vertical' }} /></div>
+              <div className="field"><label>מועד</label><DateTimePicker name="scheduled_at" required includeTime bookedSlots={bookedSlots} /></div>
               <SubmitButton className="btn">קביעת פגישה + שליחת וואטסאפ</SubmitButton>
             </form>
           </div>
@@ -168,8 +213,20 @@ export default async function CalendarPage() {
               <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--success)' }}>וואטסאפ אוטומטי</span>
             </div>
             <div className="muted" style={{ fontSize: 12 }}>
-              בקביעת פגישה, הודעת וואטסאפ נשלחת אוטומטית ללקוח עם פרטי הפגישה מהמספר +972 55-950-6913.
+              בקביעת פגישה, הודעת וואטסאפ מותאמת לסוג הפגישה נשלחת אוטומטית ללקוח מהמספר +972 55-950-6913.
               <br />תזכורות נשלחות יום לפני ו-15 דקות לפני הפגישה.
+            </div>
+          </div>
+
+          <div className="card" style={{ background: 'var(--surface-lowest)', border: '1px solid var(--border)' }}>
+            <h4 style={{ marginBottom: 8, fontSize: 13 }}>📨 תבניות הודעות לפי סוג</h4>
+            <div className="muted" style={{ fontSize: 11, lineHeight: 1.6 }}>
+              <strong>📋 שיחת איפיון</strong> — הודעת היכרות, "להבין מה אתה מחפש"<br/>
+              <strong>📞 שיחת מכרז טלפונית</strong> — "נא להיות זמין, השיחה חשובה"<br/>
+              <strong>🏢 פגישת מכרז במשרד</strong> — הזמנה למשרד עם פרטי המכרז<br/>
+              <strong>🤝 פגישה במשרדנו</strong> — פגישה כללית במשרד<br/>
+              <strong>📹 שיחת וידאו</strong> — "קישור יישלח לפני הפגישה"<br/>
+              <strong>📱 שיחה טלפונית רגילה</strong> — הודעה פשוטה ונקייה
             </div>
           </div>
         </div>
