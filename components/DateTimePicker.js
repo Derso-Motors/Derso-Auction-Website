@@ -33,6 +33,7 @@ export default function DateTimePicker({ name, required, includeTime = false, de
 
   const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 
+  // bookedSlots are ISO strings from DB (UTC). Convert to local time for comparison.
   const bookedSet = new Set(
     bookedSlots.map((iso) => {
       const d = new Date(iso);
@@ -101,10 +102,13 @@ export default function DateTimePicker({ name, required, includeTime = false, de
   const totalDays = daysInMonth(viewYear, viewMonth);
   const startDay = firstDayOfWeek(viewYear, viewMonth);
 
+  // Build hidden value as full ISO string (UTC) so the server gets correct time
   let hiddenValue = '';
   if (selectedDate) {
     if (includeTime && selectedHour != null && selectedMinute != null) {
-      hiddenValue = `${selectedDate}T${pad(selectedHour)}:${pad(selectedMinute)}`;
+      // Create Date in browser local timezone, then convert to ISO (UTC)
+      const localDate = new Date(`${selectedDate}T${pad(selectedHour)}:${pad(selectedMinute)}:00`);
+      hiddenValue = localDate.toISOString();
     } else if (!includeTime) {
       hiddenValue = selectedDate;
     }

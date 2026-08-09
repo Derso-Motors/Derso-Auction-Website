@@ -9,6 +9,8 @@ import { timeAgo } from '../../../lib/utils';
 
 export const dynamic = 'force-dynamic';
 
+const TZ = 'Asia/Jerusalem';
+
 const MEETING_TYPES = [
   {
     value: 'שיחת איפיון',
@@ -76,10 +78,19 @@ async function addMeeting(formData) {
   const scheduledAt = new Date(formData.get('scheduled_at'));
   const meetingType = formData.get('meeting_type') || 'שיחה טלפונית';
   const typeConfig = MEETING_TYPES.find((t) => t.value === meetingType) || MEETING_TYPES[MEETING_TYPES.length - 1];
-  const location = typeConfig.location;
   const clientName = isWalkIn ? (formData.get('client_name') || 'לקוח חד-פעמי') : null;
   const clientPhone = isWalkIn ? (formData.get('client_phone') || null) : null;
   const notes = formData.get('notes') || null;
+
+  // Prevent double-booking: check if a meeting already exists at this time
+  const { data: existing } = await supabase
+    .from('meetings')
+    .select('id')
+    .eq('scheduled_at', scheduledAt.toISOString())
+    .limit(1);
+  if (existing && existing.length > 0) {
+    redirect('/admin/calendar?err=' + encodeURIComponent('השעה הזו כבר תפוסה — בחר שעה אחרת'));
+  }
 
   const { error } = await supabase.from('meetings').insert({
     client_id: isWalkIn ? null : clientId,
@@ -101,8 +112,8 @@ async function addMeeting(formData) {
   }
 
   if (phone) {
-    const dateStr = scheduledAt.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
-    const timeStr = scheduledAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = scheduledAt.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
+    const timeStr = scheduledAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: TZ });
     const msg = typeConfig.template(name, title, dateStr, timeStr, notes);
     await sendWhatsApp(phone, msg);
   }
@@ -158,9 +169,9 @@ export default async function CalendarPage() {
                           <td style={{ fontWeight: 600 }}>{m.title}</td>
                           <td>{m.profiles?.full_name || m.client_name || '—'}</td>
                           <td dir="ltr" style={{ fontSize: 12 }}>{m.client_phone || '—'}</td>
-                          <td>{d.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
+                          <td>{d.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: TZ })}</td>
                           <td style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: 'var(--primary)' }}>
-                            {d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                            {d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: TZ })}
                           </td>
                           <td>{typeConf ? `${typeConf.emoji} ${typeConf.value}` : (m.location || '—')}</td>
                           <td className="muted" style={{ fontSize: 12, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.notes || '—'}</td>
