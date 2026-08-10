@@ -128,9 +128,6 @@ export default function RecommendedClient({ initialCars, inspectionBalance = 0 }
                 <button type="button" className="insp-next" disabled={!maxBid} onClick={() => setStep('inspect')}>
                   המשך ←
                 </button>
-                <button type="button" className="insp-skip" onClick={() => { setMaxBid(''); setStep('inspect'); }}>
-                  עוד לא החלטתי — דלג
-                </button>
               </>
             ) : !noBalance ? (
               <>
