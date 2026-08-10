@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import { timeAgo } from '../../../lib/utils';
 import { sendWhatsApp } from '../../../lib/whatsapp';
+import { lookupLot } from '../../../lib/bidspirit';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,36 @@ async function addAuction(formData) {
   if (error) redirect('/admin/auctions?err=' + encodeURIComponent('הוספת המכרז נכשלה'));
   revalidatePath('/admin/auctions');
   redirect('/admin/auctions?ok=' + encodeURIComponent('המכרז נוסף ✓'));
+}
+
+async function addWinByLink(formData) {
+  'use server';
+  const { supabase, user } = await requireUser();
+  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (p?.role !== 'admin') redirect('/');
+
+  const link = String(formData.get('link') || '').trim();
+  const P = '/admin/auctions';
+  const looked = await lookupLot(link);
+  if (!looked.ok) redirect(P + '?err=' + encodeURIComponent(looked.error || 'שליפת הרכב נכשלה'));
+
+  const car = looked.car;
+  const auctionDate = formData.get('auction_date') || new Date().toISOString().slice(0, 10);
+  const row = {
+    client_id: formData.get('client_id') || null,
+    car_title: car.title + (car.km ? ` · ${Number(String(car.km).replace(/[^\d]/g, '')) ? Number(String(car.km).replace(/[^\d]/g, '')).toLocaleString() + ' ק"מ' : car.km}` : ''),
+    auction_source: 'BidSpirit',
+    case_number: car.license_plate || null,
+    max_bid: 0,
+    final_price: Number(formData.get('final_price')) || null,
+    closing_date: auctionDate,
+    status: 'won',
+    auction_link: link,
+  };
+  const { error } = await supabase.from('auctions').insert(row);
+  if (error) redirect(P + '?err=' + encodeURIComponent('הוספת הזכייה נכשלה'));
+  revalidatePath(P);
+  redirect(P + '?ok=' + encodeURIComponent(`🏆 הזכייה נרשמה: ${car.title}`));
 }
 
 async function updateAuctionStatus(formData) {
@@ -182,6 +213,11 @@ export default async function AuctionsPage() {
                       <td style={{ fontWeight: 600 }}>₪{Number(a.max_bid || 0).toLocaleString()}</td>
                       <td className="muted">
                         {a.closing_date ? new Date(a.closing_date).toLocaleDateString('he-IL') : '—'}
+                        {a.closing_date && (
+                          <div style={{ fontSize: 11, color: a.status === 'won' ? 'var(--success)' : 'var(--muted-dim)' }}>
+                            {(() => { const d = Math.floor((Date.now() - new Date(a.closing_date)) / 86400000); return d === 0 ? 'היום' : d > 0 ? `לפני ${d} ימים` : `בעוד ${-d} ימים`; })()}
+                          </div>
+                        )}
                       </td>
                       <td>
                         <span className={`badge ${statusClass[a.status] || ''}`}>
@@ -219,6 +255,39 @@ export default async function AuctionsPage() {
 
         {/* LEFT: Add Auction Form */}
         <div className="admin-col-left">
+          <div className="card">
+            <h3>🏆 הוספת זכייה לפי קישור</h3>
+            <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
+              מדביקים קישור BidSpirit — הפרטים של הרכב נמשכים אוטומטית והזכייה נרשמת בהיסטוריה.
+            </p>
+            <form action={addWinByLink}>
+              <div className="field">
+                <label>קישור למכרז (BidSpirit)</label>
+                <input name="link" dir="ltr" required placeholder="https://cars.bidspirit.com/ui/lotPage/..." />
+              </div>
+              <div className="grid cols-2">
+                <div className="field">
+                  <label>תאריך המכרז</label>
+                  <input name="auction_date" type="date" />
+                </div>
+                <div className="field">
+                  <label>מחיר זכייה (₪, אופציונלי)</label>
+                  <input name="final_price" type="number" dir="ltr" placeholder="98,000" />
+                </div>
+              </div>
+              <div className="field">
+                <label>לקוח (אופציונלי)</label>
+                <select name="client_id" defaultValue="">
+                  <option value="">— ללא לקוח —</option>
+                  {(clients || []).map((c) => (
+                    <option key={c.id} value={c.id}>{c.full_name}</option>
+                  ))}
+                </select>
+              </div>
+              <SubmitButton className="btn" style={{ width: '100%' }}>🏆 רישום הזכייה</SubmitButton>
+            </form>
+          </div>
+
           <div className="card">
             <h3>הוספת מכרז חדש</h3>
             <form action={addAuction}>
