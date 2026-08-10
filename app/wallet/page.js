@@ -1,6 +1,7 @@
 import Shell from '../../components/Shell';
 import { requireUser } from '../../lib/supabase-server';
-import { CREDIT_PACKAGES, buildPaymentUrl } from '../../lib/grow';
+import { CREDIT_PACKAGES, growLinkWithParams } from '../../lib/grow';
+import PayPopup from '../../components/PayPopup';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -30,26 +31,19 @@ export default async function WalletPage({ searchParams }) {
           ₪{credits.toLocaleString()}
         </div>
         <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>
-          קרדיטים לתשלום על דוחות, מנויים ושירותים
+          קרדיטים להשלמת עסקאות ושירותים נוספים
         </div>
       </div>
 
       <div className="page-title" style={{ fontSize: 18, marginTop: 24 }}>חבילות טעינה</div>
       <div className="grid cols-2" style={{ gap: 16 }}>
         {CREDIT_PACKAGES.map((pkg) => {
-          let payUrl;
-          try {
-            payUrl = buildPaymentUrl({
-              sum: pkg.price,
-              description: `דרסו — חבילת ${pkg.label} (₪${pkg.credits} + בונוס ₪${pkg.bonus})`,
-              successUrl: `${baseUrl}/wallet?ok=${encodeURIComponent(`חבילת ${pkg.label} נטענה בהצלחה! ₪${pkg.credits + pkg.bonus} קרדיטים נוספו ✓`)}`,
-              cancelUrl: `${baseUrl}/wallet?err=${encodeURIComponent('התשלום בוטל')}`,
-              userId: user.id,
-              custom2: pkg.key,
-            });
-          } catch {
-            payUrl = null;
-          }
+          const payUrl = growLinkWithParams(pkg.link, {
+            userId: user.id,
+            custom2: pkg.key,
+            successUrl: `${baseUrl}/wallet?ok=${encodeURIComponent(`חבילת ${pkg.label} נטענה בהצלחה! ₪${pkg.credits.toLocaleString()} קרדיטים נוספו ✓`)}`,
+            cancelUrl: `${baseUrl}/wallet?err=${encodeURIComponent('התשלום בוטל')}`,
+          });
 
           return (
             <div key={pkg.key} className="card" style={{ position: 'relative', overflow: 'hidden' }}>
@@ -64,15 +58,11 @@ export default async function WalletPage({ searchParams }) {
               )}
               <h3 style={{ marginBottom: 4 }}>{pkg.label}</h3>
               <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--accent)' }}>₪{pkg.credits.toLocaleString()}</div>
-              <div className="muted" style={{ fontSize: 13 }}>+ בונוס ₪{pkg.bonus} 🎁</div>
+              <div className="muted" style={{ fontSize: 13 }}>קרדיטים נטענים מיידית לארנק</div>
               <div style={{ fontSize: 14, margin: '10px 0', color: 'var(--fg-muted)' }}>לתשלום: ₪{pkg.price.toLocaleString()}</div>
-              {payUrl ? (
-                <a href={payUrl} className="btn" style={{ display: 'block', textAlign: 'center', width: '100%', textDecoration: 'none' }}>
-                  טעינה — ₪{pkg.price.toLocaleString()}
-                </a>
-              ) : (
-                <div className="btn secondary" style={{ opacity: 0.5, cursor: 'not-allowed', textAlign: 'center' }}>בקרוב</div>
-              )}
+              <PayPopup url={payUrl} className="btn" style={{ display: 'block', textAlign: 'center', width: '100%', textDecoration: 'none' }}>
+                טעינה — ₪{pkg.price.toLocaleString()}
+              </PayPopup>
             </div>
           );
         })}
@@ -86,7 +76,7 @@ export default async function WalletPage({ searchParams }) {
         <ol className="muted" style={{ fontSize: 13.5, lineHeight: 1.8, paddingInlineStart: 20, margin: 0 }}>
           <li>בוחרים חבילת קרדיטים ומשלמים בכרטיס אשראי (סליקה מאובטחת של Grow)</li>
           <li>הקרדיטים נטענים אוטומטית לארנק תוך דקות</li>
-          <li>משתמשים בקרדיטים לתשלום על דוחות, מנויי שידור ושירותים נוספים</li>
+          <li>משתמשים בקרדיטים להשלמת עסקאות ושירותים נוספים</li>
         </ol>
       </div>
 
