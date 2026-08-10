@@ -2,14 +2,12 @@
 
 import { useState, useMemo } from 'react';
 import { DeleteButton } from './SubmitButton';
-import DateTimePicker from './DateTimePicker';
 
 const TZ = 'Asia/Jerusalem';
 
 // טבלת פגישות עם חיפוש/סינון + גלילה פנימית (לא גוררת את הדף).
-export default function MeetingsTable({ meetings = [], deleteAction, rescheduleAction, meetingTypes = [] }) {
+export default function MeetingsTable({ meetings = [], deleteAction, meetingTypes = [] }) {
   const [q, setQ] = useState('');
-  const [editing, setEditing] = useState(null);
 
   const rows = useMemo(() => {
     const norm = (s) => String(s || '').toLowerCase();
@@ -66,25 +64,10 @@ export default function MeetingsTable({ meetings = [], deleteAction, rescheduleA
                   <td className="muted" style={{ fontSize: 12, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.notes || '—'}</td>
                   <td><span className={`badge ${m._past ? 'done' : 'in_progress'}`}>{m._past ? 'עבר' : 'מתוכנן'}</span></td>
                   <td>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      {rescheduleAction && (
-                        <button type="button" className="btn small secondary" title="שינוי מועד"
-                          onClick={() => setEditing(editing === m.id ? null : m.id)}>
-                          🕐
-                        </button>
-                      )}
-                      <form action={deleteAction}>
-                        <input type="hidden" name="id" value={m.id} />
-                        <DeleteButton title="מחיקה" />
-                      </form>
-                    </div>
-                    {editing === m.id && rescheduleAction && (
-                      <form action={rescheduleAction} style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'flex-start' }}>
-                        <input type="hidden" name="id" value={m.id} />
-                        <DateTimePicker name="when" includeTime required defaultValue={m.scheduled_at} />
-                        <button type="submit" className="btn small">שמור</button>
-                      </form>
-                    )}
+                    <form action={deleteAction}>
+                      <input type="hidden" name="id" value={m.id} />
+                      <DeleteButton title="מחיקה" />
+                    </form>
                   </td>
                 </tr>
               ))}

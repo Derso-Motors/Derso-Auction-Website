@@ -265,7 +265,6 @@ export default async function CalendarPage() {
             <h3>כל הפגישות</h3>
             <MeetingsTable
               deleteAction={deleteMeeting}
-              rescheduleAction={rescheduleMeeting}
               meetingTypes={MEETING_TYPES.map((t) => ({ value: t.value, emoji: t.emoji }))}
               meetings={(meetings || []).map((m) => ({
                 id: m.id,
@@ -303,6 +302,31 @@ export default async function CalendarPage() {
               <div className="field"><label>הערות / קריטריונים</label><textarea name="notes" rows={2} placeholder="רכב מתחת למחירון, סוזוקי 2020+ וכו׳" style={{ resize: 'vertical' }} /></div>
               <div className="field"><label>מועד</label><DateTimePicker name="scheduled_at" required includeTime bookedSlots={bookedSlots} /></div>
               <SubmitButton className="btn">קביעת פגישה + שליחת וואטסאפ</SubmitButton>
+            </form>
+          </div>
+
+          <div className="card">
+            <h3>🕐 עדכון פגישה</h3>
+            <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
+              בוחרים פגישה קיימת ומועד חדש — היומן מתעדכן, הלקוח מקבל וואטסאפ והתזכורות מתאפסות.
+            </p>
+            <form action={rescheduleMeeting}>
+              <div className="field">
+                <label>פגישה</label>
+                <select name="id" required defaultValue="">
+                  <option value="" disabled>— בחר פגישה —</option>
+                  {(meetings || []).filter((m) => new Date(m.scheduled_at) > new Date()).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {[m.client_name || m.name, m.title].filter(Boolean).join(' — ')} · {new Date(m.scheduled_at).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>מועד חדש</label>
+                <DateTimePicker name="when" includeTime required />
+              </div>
+              <SubmitButton className="btn" style={{ width: '100%' }}>עדכון הפגישה</SubmitButton>
             </form>
           </div>
 
