@@ -217,6 +217,13 @@ export default function PricingClient({ packages }) {
         .pr-guarantee p { font-size: 13px; color: var(--muted-dim); margin: 0; line-height: 1.6; }
         .pr-fineprint { margin: 22px 0 0; font-size: 12px; color: var(--muted-dim); text-align: center; }
         .pr-fineprint a { color: var(--accent); }
+        @media (max-width: 600px) {
+          .pr-hero { margin-bottom: 24px; }
+          .pr-card { padding: 20px 16px; }
+          .pr-price { font-size: 30px; }
+          .pr-desc { min-height: 0; }
+          .pr-guarantee { padding: 20px 16px; }
+        }
       `}</style>
     </div>
   );
