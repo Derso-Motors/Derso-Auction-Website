@@ -20,6 +20,7 @@ async function grantCredits(formData) {
   const clientId = formData.get('client_id');
   const amount = Number(formData.get('amount'));
   const P = '/admin/clients';
+  if (!Number.isFinite(amount) || amount === 0) redirect(P + '?err=' + encodeURIComponent('סכום לא תקין'));
   const { data: p, error: pErr } = await supabase.from('profiles').select('credits').eq('id', clientId).single();
   if (pErr) redirect(P + '?err=' + encodeURIComponent('שגיאה בטעינת פרטי הלקוח'));
   const { error: updErr } = await supabase.from('profiles').update({ credits: Number(p?.credits || 0) + amount }).eq('id', clientId);

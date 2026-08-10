@@ -42,7 +42,10 @@ async function updateAuctionStatus(formData) {
   if (!AUCTION_STATUSES.includes(status)) redirect('/admin/auctions?err=' + encodeURIComponent('סטטוס לא תקין'));
   const patch = { status };
   const finalPrice = formData.get('final_price');
-  if (finalPrice) patch.final_price = Number(finalPrice);
+  if (finalPrice) {
+    const fp = Number(finalPrice);
+    if (Number.isFinite(fp)) patch.final_price = fp;
+  }
   const auctionId = formData.get('auction_id');
   const { error } = await supabase.from('auctions').update(patch).eq('id', auctionId);
   if (error) redirect('/admin/auctions?err=' + encodeURIComponent('עדכון הסטטוס נכשל'));
