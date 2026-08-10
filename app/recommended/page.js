@@ -7,12 +7,15 @@ export const dynamic = 'force-dynamic';
 export default async function RecommendedPage() {
   const { supabase, user } = await requireUser();
 
-  const [{ data: lists }, { data: broadcast }] = await Promise.all([
+  const [{ data: lists }, { data: broadcast }, { count: inspectionBalance }] = await Promise.all([
     supabase.from('recommendation_lists')
       .select('id, title, created_at, recommended_cars(*)')
       .eq('client_id', user.id).order('created_at', { ascending: false }),
     supabase.from('broadcast_cars')
       .select('*').eq('client_id', user.id).order('created_at', { ascending: false }).limit(60),
+    supabase.from('report_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', user.id).eq('status', 'paid').is('used_for', null),
   ]);
 
   const cars = (lists || [])
@@ -52,7 +55,7 @@ export default async function RecommendedPage() {
         </div>
       )}
 
-      <RecommendedClient initialCars={cars} />
+      <RecommendedClient initialCars={cars} inspectionBalance={inspectionBalance || 0} />
     </Shell>
   );
 }

@@ -58,7 +58,7 @@ export default async function AdminPage() {
                 <div className="muted" style={{ fontSize: 11 }}>{new Date(m.created_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</div>
               </div>
               <div className="side-item-actions">
-                <Link href={`/admin/chat/${m.client_id}`} className="btn small">מענה</Link>
+                <Link href="/admin/messages" className="btn small">מענה</Link>
               </div>
             </div>
           ))}

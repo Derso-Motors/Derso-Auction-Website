@@ -5,10 +5,21 @@ import { createClient } from '../../lib/supabase-client';
 
 function fmt(n) { return n != null ? Number(n).toLocaleString('he-IL') : null; }
 
-export default function RecommendedClient({ initialCars }) {
+const INSPECTION_OPTIONS = [
+  { scope: 'full',   icon: '🛡️', title: 'בדיקה מלאה + טופס סליקה', sub: 'הכי מומלץ — דוח בדיקה מקיף וגם טופס סליקה משפטי', claim: true, featured: true },
+  { scope: 'report', icon: '📋', title: 'רק דוח בדיקה', sub: 'דוח בדיקה מלא לרכב לפני המכרז', claim: true },
+  { scope: 'form',   icon: '📄', title: 'רק טופס סליקה', sub: 'טופס סליקה משפטי בלבד', claim: true },
+  { scope: 'none',   icon: '🚫', title: 'לא מעוניין בבדיקות', sub: 'קביעת מכרז בלי בדיקה מקדימה', claim: false },
+];
+
+export default function RecommendedClient({ initialCars, inspectionBalance = 0 }) {
   const [cars, setCars] = useState(initialCars);
   const [toast, setToast] = useState(null);
   const [busyCar, setBusyCar] = useState(null);
+  const [modalCar, setModalCar] = useState(null);
+  const [balance, setBalance] = useState(inspectionBalance);
+  const [noBalance, setNoBalance] = useState(false);
+  const [working, setWorking] = useState(false);
 
   function showToast(msg, isErr) {
     setToast({ msg, isErr });
@@ -31,25 +42,54 @@ export default function RecommendedClient({ initialCars }) {
     else showToast('הסימון הוסר ✓');
   }
 
-  async function requestAuction(car) {
-    if (!window.confirm(`רוצה שנקבע בשבילך מכרז על "${car.title}"?\nזה יתווסף לפגישות שלך וליומן שלנו, ונעדכן בוואטסאפ.`)) return;
-    setBusyCar(car.id);
+  async function bookAuction(car) {
     const supabase = createClient();
     const { data, error } = await supabase.rpc('request_auction_meeting', { p_car_id: car.id });
-    setBusyCar(null);
     if (error || !data?.ok) {
       if (data?.error === 'already_requested') {
         showToast('כבר ביקשת מכרז על הרכב הזה — הוא בפגישות שלך.', false);
       } else {
         showToast('לא הצלחנו לקבוע כרגע. נסה שוב או פנה אלינו בצ׳אט.', true);
       }
-      return;
+      return false;
     }
-    // optimistic update the card
     setCars((prev) => prev.map((c) => (c.id === car.id ? { ...c, client_interest: 'interested' } : c)));
-    showToast(data.scheduled
-      ? '🎉 המכרז נוסף לפגישות שלך וליומן שלנו — שלחנו אישור בוואטסאפ!'
-      : '🎉 הבקשה נרשמה ביומן שלנו — נחזור אליך לתיאום, שלחנו אישור בוואטסאפ!');
+    return data;
+  }
+
+  async function chooseOption(opt) {
+    if (working || !modalCar) return;
+    setWorking(true);
+    const car = modalCar;
+    const supabase = createClient();
+
+    if (opt.claim) {
+      const { data, error } = await supabase.rpc('claim_inspection', { p_car_id: car.id, p_scope: opt.scope });
+      if (error || !data?.ok) {
+        setWorking(false);
+        if (data?.error === 'no_balance') {
+          setNoBalance(true);
+          return;
+        }
+        showToast('משהו השתבש — נסה שוב', true);
+        return;
+      }
+      setBalance(data.remaining ?? Math.max(0, balance - 1));
+    }
+
+    setBusyCar(car.id);
+    const booked = await bookAuction(car);
+    setBusyCar(null);
+    setWorking(false);
+    setModalCar(null);
+    setNoBalance(false);
+    if (booked) {
+      showToast(opt.claim
+        ? `🎉 המכרז נקבע והבדיקה שוריינה! (${opt.title}) — שלחנו אישור בוואטסאפ`
+        : (booked.scheduled
+          ? '🎉 המכרז נוסף לפגישות שלך וליומן שלנו — שלחנו אישור בוואטסאפ!'
+          : '🎉 הבקשה נרשמה ביומן שלנו — נחזור אליך לתיאום, שלחנו אישור בוואטסאפ!'));
+    }
   }
 
   if (!cars.length) {
@@ -59,6 +99,50 @@ export default function RecommendedClient({ initialCars }) {
   return (
     <>
       {toast && <div className={`inv-toast${toast.isErr ? ' toast-err' : ''}`}>{toast.msg}</div>}
+
+      {modalCar && (
+        <div className="insp-overlay" onClick={() => !working && (setModalCar(null), setNoBalance(false))}>
+          <div className="insp-box" onClick={(e) => e.stopPropagation()}>
+            {!noBalance ? (
+              <>
+                <div className="insp-title">🚗 רגע לפני שקובעים מכרז על</div>
+                <div className="insp-car">{modalCar.title}</div>
+                <div className="insp-sub">
+                  רכב מכרז בלי בדיקה = הימור. 9 מתוך 10 לקוחות שלנו בודקים לפני.
+                  {balance > 0 && <b> נשארו לך {balance} בדיקות בחבילה 🎁</b>}
+                </div>
+                <div className="insp-options">
+                  {INSPECTION_OPTIONS.map((opt) => (
+                    <button key={opt.scope} type="button" disabled={working}
+                      className={`insp-opt ${opt.featured ? 'featured' : ''} ${opt.scope === 'none' ? 'plain' : ''}`}
+                      onClick={() => chooseOption(opt)}>
+                      <span className="insp-opt-icon">{opt.icon}</span>
+                      <span className="insp-opt-text">
+                        <b>{opt.title}</b>
+                        <small>{opt.sub}</small>
+                      </span>
+                      {opt.featured && <span className="insp-opt-tag">מומלץ</span>}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="insp-title" style={{ fontSize: 34 }}>😕</div>
+                <div className="insp-car">אין לך בדיקות זמינות בחבילה</div>
+                <div className="insp-sub">כדי לשריין בדיקה לרכב הזה, רכשו חבילת בדיקות — זה לוקח דקה והבדיקה נשמרת לכם.</div>
+                <a href="/pricing" className="btn" style={{ display: 'block', textAlign: 'center', marginBottom: 8 }}>💲 למחירונים ורכישה →</a>
+                <button type="button" className="btn secondary" style={{ width: '100%' }} disabled={working}
+                  onClick={() => chooseOption(INSPECTION_OPTIONS[3])}>
+                  להמשיך לקביעת מכרז בלי בדיקה
+                </button>
+              </>
+            )}
+            <button type="button" className="insp-close" disabled={working} onClick={() => { setModalCar(null); setNoBalance(false); }}>✕</button>
+          </div>
+        </div>
+      )}
+
     <div className="inv-grid">
       {cars.map((car) => (
         <div key={car.id} className="inv-card">
@@ -94,7 +178,7 @@ export default function RecommendedClient({ initialCars }) {
                   className="btn success"
                   type="button"
                   disabled={busyCar === car.id}
-                  onClick={() => requestAuction(car)}>
+                  onClick={() => setModalCar(car)}>
                   {busyCar === car.id ? '⏳ שולח...' : '📅 מעניין — קבעו מכרז'}
                 </button>
               ) : (
@@ -112,6 +196,68 @@ export default function RecommendedClient({ initialCars }) {
         </div>
       ))}
     </div>
+
+      <style jsx>{`
+        .insp-overlay {
+          position: fixed; inset: 0; z-index: 1000;
+          background: rgba(0, 0, 0, 0.65);
+          backdrop-filter: blur(5px);
+          display: flex; align-items: center; justify-content: center;
+          animation: insp-fade 0.25s ease both;
+          padding: 16px;
+        }
+        @keyframes insp-fade { from { opacity: 0; } to { opacity: 1; } }
+        .insp-box {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 28px 24px 22px;
+          max-width: 430px; width: 100%;
+          position: relative;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+          animation: insp-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+        @keyframes insp-pop { from { opacity: 0; transform: scale(0.85) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .insp-title { font-size: 15px; color: var(--muted-dim); text-align: center; }
+        .insp-car { font-size: 19px; font-weight: 700; text-align: center; margin: 4px 0 8px; color: var(--text); }
+        .insp-sub { font-size: 13.5px; color: var(--muted); text-align: center; margin-bottom: 18px; line-height: 1.6; }
+        .insp-sub b { color: var(--success); display: block; margin-top: 4px; }
+        .insp-options { display: flex; flex-direction: column; gap: 10px; }
+        .insp-opt {
+          display: flex; align-items: center; gap: 12px;
+          background: var(--surface-low);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 12px 14px;
+          cursor: pointer;
+          text-align: right;
+          font-family: inherit;
+          color: var(--text);
+          transition: all 0.15s;
+          position: relative;
+        }
+        .insp-opt:hover:not(:disabled) { border-color: var(--accent); background: var(--surface-high); transform: translateY(-1px); }
+        .insp-opt:disabled { opacity: 0.6; cursor: wait; }
+        .insp-opt.featured { border-color: var(--success); background: var(--success-bg); }
+        .insp-opt.featured:hover:not(:disabled) { border-color: var(--success); filter: brightness(1.1); }
+        .insp-opt.plain { border-style: dashed; opacity: 0.85; }
+        .insp-opt-icon { font-size: 22px; flex-shrink: 0; }
+        .insp-opt-text { display: flex; flex-direction: column; gap: 2px; }
+        .insp-opt-text b { font-size: 14px; }
+        .insp-opt-text small { font-size: 12px; color: var(--muted-dim); }
+        .insp-opt-tag {
+          position: absolute; top: -8px; left: 12px;
+          background: var(--success); color: #fff;
+          font-size: 10px; font-weight: 700;
+          padding: 2px 10px; border-radius: 999px;
+        }
+        .insp-close {
+          position: absolute; top: 10px; left: 10px;
+          background: none; border: none; color: var(--muted-dim);
+          font-size: 16px; cursor: pointer; padding: 6px;
+        }
+        .insp-close:hover { color: var(--text); }
+      `}</style>
     </>
   );
 }

@@ -7,6 +7,7 @@ import { requireUser } from '../lib/supabase-server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { timeAgo } from '../lib/utils';
+import { sendWhatsApp } from '../lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,34 @@ async function deleteMeetingAction(formData) {
   revalidatePath('/');
 }
 
+async function inviteClientWhatsApp(formData) {
+  'use server';
+  const { supabase, user } = await requireUser();
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') redirect('/');
+  const phone = String(formData.get('phone') || '').trim();
+  if (!phone) redirect('/?err=' + encodeURIComponent('נא להזין מספר טלפון'));
+  const msg = `היי! 👋
+
+כאן דרסו — בית ליווי מקצועי למכרזי רכב.
+
+הכנו לך מערכת אישית שתלווה אותך בקנייה של הרכב החדש שלך:
+🚗 רכבים שנבחרו במיוחד בשבילך
+📋 דוחות בדיקה מקיפים לפני כל מכרז
+📅 קביעת שיחות ומעקב מלא אחרי התהליך
+
+להרשמה ולכניסה למערכת:
+https://auctions.derso.net/login
+
+נשמח ללוות אותך לעסקה בטוחה ומשתלמת 🤝
+
+דרסו — בית ליווי מקצועי למכרזים`;
+  const res = await sendWhatsApp(phone, msg);
+  revalidatePath('/');
+  if (res?.ok === false) redirect('/?err=' + encodeURIComponent('שליחת ההזמנה נכשלה — בדוק את המספר'));
+  redirect('/?ok=' + encodeURIComponent('הזמנה נשלחה בוואטסאפ ל-' + phone + ' ✓'));
+}
+
 async function deleteOrderAction(formData) {
   'use server';
   const { supabase, user } = await requireUser();
@@ -51,7 +80,7 @@ async function deleteCarAction(formData) {
   revalidatePath('/');
 }
 
-export default async function Dashboard() {
+export default async function Dashboard({ searchParams }) {
   const { supabase, user } = await requireUser();
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
   const isAdmin = profile?.role === 'admin';
@@ -98,6 +127,19 @@ export default async function Dashboard() {
             sig={String(unread[0]?.id || unread.length)}
           />
         )}
+
+        {searchParams?.err && <div className="error-msg">{searchParams.err}</div>}
+        {searchParams?.ok && !searchParams?.err && <div className="info-msg">{searchParams.ok}</div>}
+
+        {/* Quick WhatsApp invite */}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <h3 style={{ marginBottom: 6 }}>📲 הזמנת לקוח חדש למערכת</h3>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>מזינים מספר — הלקוח מקבל בוואטסאפ הודעה מקצועית עם קישור הרשמה.</p>
+          <form action={inviteClientWhatsApp} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <input name="phone" dir="ltr" placeholder="050-1234567" required style={{ flex: 1, minWidth: 180 }} />
+            <SubmitButton className="btn">שליחת הזמנה בוואטסאפ</SubmitButton>
+          </form>
+        </div>
 
         {/* Bento Grid: Stats */}
         <div className="grid cols-4" style={{ marginBottom: 4 }}>
@@ -244,7 +286,7 @@ export default async function Dashboard() {
                         <td dir="ltr">{c.phone || '—'}</td>
                         <td>₪{Number(c.credits).toLocaleString()}</td>
                         <td className="muted">{new Date(c.created_at).toLocaleDateString('he-IL')}</td>
-                        <td><Link href={`/admin/chat/${c.id}`} style={{ color: 'var(--accent)', fontSize: 12 }}>צ׳אט</Link></td>
+                        <td><Link href="/admin/messages" style={{ color: 'var(--accent)', fontSize: 12 }}>צ׳אט</Link></td>
                       </tr>
                     ))}
                   </tbody>

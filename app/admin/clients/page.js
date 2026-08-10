@@ -84,7 +84,7 @@ export default async function ClientsPage() {
                       <td>{c.role === 'admin' ? 'מנהל' : 'לקוח'}</td>
                       <td>₪{Number(c.credits).toLocaleString()}</td>
                       <td className="muted">{new Date(c.created_at).toLocaleDateString('he-IL')}</td>
-                      <td><Link href={`/admin/chat/${c.id}`} style={{ color: 'var(--accent)' }}>צ׳אט</Link></td>
+                      <td><Link href="/admin/messages" style={{ color: 'var(--accent)' }}>צ׳אט</Link></td>
                       <td>
                         {c.role !== 'admin' && (
                           <form action={deleteClient}>
