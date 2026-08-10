@@ -11,8 +11,8 @@ export default function PricingClient({ packages }) {
       </div>
 
       <div className="pr-grid">
-        {packages.map((pkg) => (
-          <article key={pkg.key} className={`pr-card ${pkg.featured ? 'featured' : ''}`}>
+        {packages.map((pkg, i) => (
+          <article key={pkg.key} className={`pr-card ${pkg.featured ? 'featured' : ''}`} style={{ animationDelay: `${0.1 + i * 0.15}s` }}>
             {pkg.featured && <div className="pr-topline" />}
             <div className="pr-card-head">
               <div>
@@ -90,8 +90,13 @@ export default function PricingClient({ packages }) {
           border-radius: 50%;
           filter: blur(100px);
           pointer-events: none;
+          animation: pr-float 9s ease-in-out infinite alternate;
         }
-        .pr-hero { text-align: center; margin-bottom: 36px; position: relative; }
+        @keyframes pr-float {
+          from { transform: translate(0, 0) scale(1); }
+          to { transform: translate(30%, 20%) scale(1.25); }
+        }
+        .pr-hero { text-align: center; margin-bottom: 36px; position: relative; animation: pr-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
         .pr-hero h1 {
           font-size: clamp(26px, 4vw, 44px);
           font-weight: 700;
@@ -100,6 +105,15 @@ export default function PricingClient({ packages }) {
           color: var(--pr-text);
         }
         .pr-hero p { color: var(--pr-muted); font-size: 15px; margin: 0 auto; max-width: 560px; }
+
+        @keyframes pr-rise {
+          from { opacity: 0; transform: translateY(24px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pr-glow {
+          0%, 100% { box-shadow: 0 0 40px rgba(78, 222, 163, 0.12); }
+          50% { box-shadow: 0 0 60px rgba(78, 222, 163, 0.28); }
+        }
 
         .pr-grid {
           display: grid;
@@ -118,21 +132,29 @@ export default function PricingClient({ packages }) {
           position: relative;
           overflow: hidden;
           transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+          animation: pr-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
-        .pr-card:hover { border-color: rgba(255, 255, 255, 0.25); }
+        .pr-card:hover { border-color: rgba(255, 255, 255, 0.25); transform: translateY(-6px); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); }
         .pr-card.featured {
           background: var(--pr-card-hi);
           border-color: rgba(78, 222, 163, 0.35);
-          box-shadow: 0 0 40px rgba(78, 222, 163, 0.12);
+          animation: pr-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both, pr-glow 3s ease-in-out 1s infinite;
         }
         @media (min-width: 900px) {
           .pr-card.featured { transform: translateY(-10px); }
+          .pr-card.featured:hover { transform: translateY(-16px); }
         }
         .pr-topline {
           position: absolute;
           top: 0; right: 0; left: 0;
           height: 3px;
-          background: linear-gradient(90deg, #4edea3, #c0c6de);
+          background: linear-gradient(90deg, #4edea3, #c0c6de, #4edea3);
+          background-size: 200% 100%;
+          animation: pr-shimmer 3s linear infinite;
+        }
+        @keyframes pr-shimmer {
+          from { background-position: 200% 0; }
+          to { background-position: -200% 0; }
         }
         .pr-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 18px; }
         .pr-card h3 { font-size: 22px; font-weight: 600; margin: 0 0 6px; color: var(--pr-text); }
@@ -181,7 +203,8 @@ export default function PricingClient({ packages }) {
           transition: all 0.2s;
           margin-top: auto;
         }
-        .pr-cta:hover { background: rgba(255, 255, 255, 0.06); border-color: var(--pr-accent); color: var(--pr-accent); }
+        .pr-cta:hover { background: rgba(255, 255, 255, 0.06); border-color: var(--pr-accent); color: var(--pr-accent); transform: scale(1.02); }
+        .pr-cta:active { transform: scale(0.97); }
         .pr-cta.primary {
           background: var(--pr-accent);
           border-color: var(--pr-accent);
@@ -198,6 +221,7 @@ export default function PricingClient({ packages }) {
           padding: 28px 24px;
           position: relative;
           overflow: hidden;
+          animation: pr-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.55s both;
         }
         .pr-guarantee h3 { display: flex; align-items: center; gap: 10px; font-size: 20px; margin: 0 0 22px; color: var(--pr-text); }
         .pr-guarantee-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 22px; }
