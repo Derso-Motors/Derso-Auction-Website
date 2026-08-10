@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { processDueItems, processTaskReminders } from '../../../../lib/broadcast';
-import { processCallReminders } from '../../../../lib/callBookings';
 
 export const dynamic = 'force-dynamic';
 
 // Processes due broadcast items. Called by the Vercel daily cron (and can also
 // be pinged by the office bot with the CRON_SECRET for intraday processing).
+// Call reminders are handled separately by /api/call/reminders (every 10 min).
 export async function GET(req) {
   const auth = req.headers.get('authorization') || '';
   const fromVercelCron = !!req.headers.get('x-vercel-cron') || auth === `Bearer ${process.env.CRON_SECRET}`;
@@ -21,6 +21,5 @@ export async function GET(req) {
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey, { auth: { persistSession: false } });
   const sent = await processDueItems(supabase);
   const reminders = await processTaskReminders(supabase);
-  const calls = await processCallReminders(supabase);
-  return Response.json({ ok: true, sent, reminders, calls });
+  return Response.json({ ok: true, sent, reminders });
 }
