@@ -926,3 +926,34 @@ table.data tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
   .page-title, .page-sub, .main .card, .main .grid > .card, .info-msg, .error-msg { animation: none; }
   .card:hover, .btn:hover { transform: none; }
 }
+
+/* Entrance animation for every page — all direct children of .main rise in, staggered */
+.main > * { animation: page-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.main > *:nth-child(1) { animation-delay: 0s; }
+.main > *:nth-child(2) { animation-delay: 0.06s; }
+.main > *:nth-child(3) { animation-delay: 0.12s; }
+.main > *:nth-child(4) { animation-delay: 0.18s; }
+.main > *:nth-child(5) { animation-delay: 0.24s; }
+.main > *:nth-child(6) { animation-delay: 0.3s; }
+.main > *:nth-child(7) { animation-delay: 0.36s; }
+.main > *:nth-child(n+8) { animation-delay: 0.42s; }
+/* stat tiles pop in with a slight scale */
+@keyframes stat-pop {
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.card.stat { animation: stat-pop 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+.grid > .card.stat:nth-child(2) { animation-delay: 0.07s; }
+.grid > .card.stat:nth-child(3) { animation-delay: 0.14s; }
+.grid > .card.stat:nth-child(4) { animation-delay: 0.21s; }
+/* table rows fade in softly */
+@keyframes row-fade { from { opacity: 0; } to { opacity: 1; } }
+table.data tbody tr { animation: row-fade 0.45s ease both; }
+table.data tbody tr:nth-child(2) { animation-delay: 0.04s; }
+table.data tbody tr:nth-child(3) { animation-delay: 0.08s; }
+table.data tbody tr:nth-child(4) { animation-delay: 0.12s; }
+table.data tbody tr:nth-child(5) { animation-delay: 0.16s; }
+table.data tbody tr:nth-child(n+6) { animation-delay: 0.2s; }
+@media (prefers-reduced-motion: reduce) {
+  .main > *, .card.stat, table.data tbody tr { animation: none; }
+}
