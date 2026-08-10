@@ -125,26 +125,9 @@ async function addMeeting(formData) {
   }).select('id').single();
   if (error) redirect('/admin/calendar?err=' + encodeURIComponent('שגיאה בקביעת הפגישה'));
 
-  // Sync to Google Calendar via Apps Script (same flow as book-call)
-  const appsUrl = process.env.APPS_SCRIPT_URL;
-  if (appsUrl && meeting?.id) {
-    try {
-      const res = await fetch(appsUrl, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'createMeeting',
-          title: `${typeConfig.emoji} ${title}${clientName ? ` — ${clientName}` : ''}`,
-          startISO: scheduledAt.toISOString(),
-          durationMin: 15,
-          notes: [meetingType, clientPhone ? `טלפון: ${clientPhone}` : '', notes || ''].filter(Boolean).join('\n'),
-        }),
-      });
-      const j = await res.json().catch(() => null);
-      if (j?.eventId) {
-        await supabase.from('meetings').update({ gcal_event_id: j.eventId }).eq('id', meeting.id);
-      }
-    } catch {}
-  }
+  // הסנכרון ליומן החדש (derso.motors) נעשה ע"י הבוט דרך /api/nadav/cal-outbox
+  // (gcal_event_id נשאר null עד שהבוט יוצר את האירוע). לא משתמשים ב-Apps Script —
+  // הוא הצביע ליומן הישן וגרם לפגישות "להיעלם".
 
   let phone = clientPhone;
   let name = clientName;
@@ -169,20 +152,32 @@ async function deleteMeeting(formData) {
   'use server';
   const supabase = await requireAdmin();
   const id = formData.get('id');
-  const { data: m } = await supabase.from('meetings').select('gcal_event_id').eq('id', id).single();
+  // שולפים את מלוא הפרטים לפני המחיקה (לצורך ביטול ביומן + התראה ללקוח).
+  const { data: m } = await supabase
+    .from('meetings')
+    .select('gcal_event_id, title, scheduled_at, location, client_id, client_name, client_phone, profiles(full_name, phone)')
+    .eq('id', id).single();
+
   const { error } = await supabase.from('meetings').delete().eq('id', id);
   if (error) redirect('/admin/calendar?err=' + encodeURIComponent('שגיאה במחיקת הפגישה'));
-  // Remove the synced Google Calendar event too
-  if (m?.gcal_event_id && process.env.APPS_SCRIPT_URL) {
-    try {
-      await fetch(process.env.APPS_SCRIPT_URL, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'deleteMeeting', eventId: m.gcal_event_id }),
-      });
-    } catch {}
+
+  // 1) מחיקת האירוע מהיומן החדש — דרך הבוט (תור מחיקות). כך זה נמחק מהיומן הנכון.
+  if (m?.gcal_event_id) {
+    try { await supabase.from('cal_deletions').upsert({ gcal_event_id: m.gcal_event_id }); } catch {}
   }
+
+  // 2) התראת ביטול ללקוח בוואטסאפ.
+  const phone = m?.client_phone || m?.profiles?.phone;
+  const name = m?.client_name || m?.profiles?.full_name || '';
+  if (phone && m?.scheduled_at) {
+    const dateStr = new Date(m.scheduled_at).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
+    const timeStr = new Date(m.scheduled_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: TZ });
+    const msg = `שלום${name ? ' ' + name : ''},\nהפגישה שנקבעה ל${dateStr} בשעה ${timeStr} בוטלה. 🗓️\nלתיאום מועד חדש — אנחנו כאן.\nדרסו — בית ליווי מקצועי למכרזים 🚗`;
+    try { await sendWhatsApp(phone, msg); } catch {}
+  }
+
   revalidatePath('/admin/calendar');
-  redirect('/admin/calendar?ok=' + encodeURIComponent('הפגישה נמחקה ✓'));
+  redirect('/admin/calendar?ok=' + encodeURIComponent(phone ? 'הפגישה נמחקה, בוטלה ביומן ונשלחה הודעת ביטול ללקוח ✓' : 'הפגישה נמחקה ובוטלה ביומן ✓'));
 }
 
 export default async function CalendarPage() {
