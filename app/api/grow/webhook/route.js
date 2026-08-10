@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { CREDIT_PACKAGES, verifyWebhook } from '../../../../lib/grow';
+import { CREDIT_PACKAGES, REPORT_PACKAGES, verifyWebhook } from '../../../../lib/grow';
 import { NextResponse } from 'next/server';
 
 const supabaseAdmin = () => createClient(
@@ -32,31 +32,47 @@ export async function POST(request) {
 
   const sb = supabaseAdmin();
 
-  // Idempotency check
-  const { data: existing } = await sb
-    .from('credit_transactions')
-    .select('id')
-    .eq('grow_tx_code', txCode)
-    .maybeSingle();
+  // Idempotency: a Grow transaction lands in exactly one of these tables
+  const [{ data: existingTx }, { data: existingOrder }] = await Promise.all([
+    sb.from('credit_transactions').select('id').eq('grow_tx_code', txCode).maybeSingle(),
+    sb.from('report_orders').select('id').eq('grow_tx_code', txCode).maybeSingle(),
+  ]);
 
-  if (existing) {
+  if (existingTx || existingOrder) {
     return NextResponse.json({ ok: true, msg: 'already processed' });
   }
 
-  // Case 1: Credit package purchase
-  const pkg = CREDIT_PACKAGES.find(p => p.key === custom2);
-  if (pkg) {
-    const creditAmount = pkg.credits + pkg.bonus;
-    await sb.rpc('admin_add_credits', {
-      p_user_id: userId,
-      p_amount: creditAmount,
-      p_reason: `טעינת חבילת ${pkg.label} (₪${pkg.price}) + בונוס ₪${pkg.bonus}`,
-      p_grow_tx_code: txCode,
-    });
-    return NextResponse.json({ ok: true, type: 'package', package: pkg.key, credits: creditAmount });
+  // Case 1: Report package purchase — create paid report orders (one per report)
+  const reportPkg = REPORT_PACKAGES.find(p => p.key === custom2);
+  if (reportPkg) {
+    const rows = Array.from({ length: reportPkg.reports }, (_, i) => ({
+      client_id: userId,
+      report_type: `${reportPkg.label} — דוח בדיקה מלא + טופס סליקה (${i + 1}/${reportPkg.reports})`,
+      amount: reportPkg.perUnit,
+      status: 'paid',
+      // unique column — suffix the tx code for multi-report packages
+      grow_tx_code: reportPkg.reports > 1 ? `${txCode}-${i + 1}` : txCode,
+    }));
+    const { error } = await sb.from('report_orders').insert(rows);
+    if (error) {
+      return NextResponse.json({ error: 'order insert failed' }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, type: 'report_package', package: reportPkg.key, orders: rows.length });
   }
 
-  // Case 2: Report order payment (custom2 is a UUID)
+  // Case 2: Credit package purchase (credits already include the bonus)
+  const pkg = CREDIT_PACKAGES.find(p => p.key === custom2);
+  if (pkg) {
+    await sb.rpc('admin_add_credits', {
+      p_user_id: userId,
+      p_amount: pkg.credits,
+      p_reason: `טעינת חבילת ${pkg.label} (₪${pkg.price}) כולל בונוס ₪${pkg.bonus}`,
+      p_grow_tx_code: txCode,
+    });
+    return NextResponse.json({ ok: true, type: 'package', package: pkg.key, credits: pkg.credits });
+  }
+
+  // Case 3: Report order payment (custom2 is a UUID)
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(custom2)) {
     await sb
@@ -68,7 +84,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, type: 'order', orderId: custom2 });
   }
 
-  // Case 3: Generic credit
+  // Case 4: Generic credit — exact paid amount
   await sb.rpc('admin_add_credits', {
     p_user_id: userId,
     p_amount: paymentSum,
