@@ -162,7 +162,7 @@ export async function POST(req) {
       client_id: null,
       client_name: parsed.client_name || null,
       title: parsed.title,
-      scheduled_at: new Date(parsed.due_at).toISOString(),
+      scheduled_at: (() => { const d = new Date(parsed.due_at); return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString(); })(),
       location: parsed.location || null,
     });
     if (error) return Response.json({ reply: `לא הצלחתי לרשום את הפגישה 😕 (${error.message})` });

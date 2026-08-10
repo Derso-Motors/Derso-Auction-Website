@@ -44,7 +44,10 @@ async function addTask(formData) {
   const supabase = await requireAdmin();
   const dueAt = formData.get('due_at');
   let due = null;
-  if (dueAt) due = new Date(`${dueAt}:00+03:00`).toISOString();
+  if (dueAt) {
+    const d = new Date(`${dueAt}:00+03:00`);
+    if (!isNaN(d.getTime())) due = d.toISOString();
+  }
   const kind = formData.get('kind') === 'note' ? 'note' : 'task';
   const { error } = await supabase.from('admin_tasks').insert({
     kind,
