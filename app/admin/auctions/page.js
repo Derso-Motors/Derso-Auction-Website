@@ -238,7 +238,6 @@ export default async function AuctionsPage() {
                             <option value="lost">לא זכה</option>
                             <option value="cancelled">בוטל</option>
                           </select>
-                          <input name="final_price" placeholder="מחיר סופי" type="number" dir="ltr" style={{ width: 100 }} />
                           <SubmitButton className="btn small secondary">עדכון</SubmitButton>
                         </form>
                       </td>
