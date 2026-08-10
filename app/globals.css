@@ -929,7 +929,7 @@ table.data tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
 
 /* Entrance animation for every page — all direct children of .main rise in, staggered */
 /* Elements start hidden; MainAnimator assigns each its staggered entrance */
-.main-anim .page-title, .main-anim .page-sub, .main-anim .card { opacity: 0; animation: page-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.9s both; }
+.main-anim .page-title, .main-anim .page-sub, .main-anim .card { opacity: 0; animation: page-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both; }
 /* stat tiles pop in with a slight scale */
 @keyframes stat-pop {
   from { opacity: 0; transform: translateY(14px) scale(0.96); }

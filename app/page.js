@@ -27,6 +27,8 @@ async function deleteMeetingAction(formData) {
   const { supabase, user } = await requireUser();
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (profile?.role !== 'admin') redirect('/');
+  const { data: mrow } = await supabase.from('meetings').select('gcal_event_id').eq('id', formData.get('id')).single();
+  if (mrow?.gcal_event_id) { try { await supabase.from('cal_deletions').upsert({ gcal_event_id: mrow.gcal_event_id }); } catch {} }
   await supabase.from('meetings').delete().eq('id', formData.get('id'));
   revalidatePath('/');
 }

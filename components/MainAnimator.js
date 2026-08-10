@@ -24,7 +24,7 @@ export default function MainAnimator({ children }) {
       el.style.animation = 'none';
       // force reflow so the animation restarts even for reused DOM nodes
       void el.offsetWidth;
-      el.style.animation = `page-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) ${0.08 + i * 0.12}s both`;
+      el.style.animation = `page-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) ${0.04 + i * 0.06}s both`;
       i += 1;
     });
 
@@ -32,7 +32,7 @@ export default function MainAnimator({ children }) {
     rows.forEach((tr, j) => {
       tr.style.animation = 'none';
       void tr.offsetWidth;
-      tr.style.animation = `row-fade 0.45s ease ${0.15 + Math.min(j, 12) * 0.06}s both`;
+      tr.style.animation = `row-fade 0.3s ease ${0.1 + Math.min(j, 12) * 0.04}s both`;
     });
   }, [pathname]);
 

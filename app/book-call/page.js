@@ -116,7 +116,11 @@ async function cancelMyCall(formData) {
   if (booking) {
     await supabase.from('call_bookings').update({ status: 'cancelled', cancelled_at: new Date().toISOString() }).eq('id', id);
     const admin = serviceClient();
-    if (admin && booking.meeting_id) await admin.from('meetings').delete().eq('id', booking.meeting_id);
+    if (admin && booking.meeting_id) {
+      const { data: mrow } = await admin.from('meetings').select('gcal_event_id').eq('id', booking.meeting_id).single();
+      if (mrow?.gcal_event_id) { try { await admin.from('cal_deletions').upsert({ gcal_event_id: mrow.gcal_event_id }); } catch {} }
+      await admin.from('meetings').delete().eq('id', booking.meeting_id);
+    }
     await deleteGoogleEvent(booking.google_event_id);
     await sendWhatsApp(OWNER_PHONE, `❌ ${booking.client_name || booking.phone} ביטל את שיחת האפיון שהייתה קבועה ל${fmtIl(booking.starts_at)}`);
   }
