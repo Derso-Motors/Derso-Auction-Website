@@ -83,7 +83,7 @@ async function addMeeting(formData) {
   const meetingType = formData.get('meeting_type') || 'שיחה טלפונית';
   const typeConfig = MEETING_TYPES.find((t) => t.value === meetingType) || MEETING_TYPES[MEETING_TYPES.length - 1];
 
-  // Business-hours rules (Israel time): Sun-Thu until 18:00; Friday phone calls only, 10:00-14:00
+  // Business-hours rules (Israel time): Sun-Thu until 18:00; Friday phone calls only, 10:00-14:00.
   const il = new Date(scheduledAt.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
   const ilHour = il.getHours() + il.getMinutes() / 60;
   const ilDow = il.getDay();
@@ -97,8 +97,15 @@ async function addMeeting(formData) {
     if (ilHour < 10 || ilHour >= 14) {
       redirect('/admin/calendar?err=' + encodeURIComponent('ביום שישי קובעים שיחות בין 10:00 ל-14:00 בלבד'));
     }
-  } else if (ilHour < 7 || ilHour >= 18) {
-    redirect('/admin/calendar?err=' + encodeURIComponent('קביעת פגישות אפשרית עד 18:00 בלבד'));
+  } else {
+    if (ilHour < 7 || ilHour >= 18) {
+      redirect('/admin/calendar?err=' + encodeURIComponent('קביעת פגישות אפשרית עד 18:00 בלבד'));
+    }
+    // Lunch break: 14:15–15:00 (not including 15:00)
+    const ilMinutes = il.getHours() * 60 + il.getMinutes();
+    if (ilMinutes >= 14 * 60 + 15 && ilMinutes < 15 * 60) {
+      redirect('/admin/calendar?err=' + encodeURIComponent('הפסקת צהריים 🍽️ — לא ניתן לקבוע פגישות בין 14:15 ל-15:00'));
+    }
   }
   const clientName = isWalkIn ? (formData.get('client_name') || 'לקוח חד-פעמי') : null;
   const clientPhone = isWalkIn ? (formData.get('client_phone') || null) : null;

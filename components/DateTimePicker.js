@@ -150,6 +150,13 @@ export default function DateTimePicker({ name, required, includeTime = false, de
     return h >= 12 && h < 16;
   }
 
+  // Lunch break: Sun-Thu 14:15–14:59 (slots 14:15, 14:30, 14:45)
+  function isLunchBreak(h, m) {
+    if (isFriday) return false; // Friday ends at 14:00 anyway
+    const t = h * 60 + m;
+    return t >= 14 * 60 + 15 && t < 15 * 60;
+  }
+
   return (
     <div className="dtp-wrap" ref={ref}>
       <input type="hidden" name={name} value={hiddenValue} required={required} />
@@ -211,7 +218,7 @@ export default function DateTimePicker({ name, required, includeTime = false, de
               יום שישי — שיחות טלפון בלבד, 10:00–14:00 📞
             </div>
           )}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '0 12px 8px', fontSize: 11 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '0 12px 8px', fontSize: 11, flexWrap: 'wrap' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: 'rgba(99,179,237,0.13)', border: '1px solid rgba(99,179,237,0.3)', display: 'inline-block' }} />
               שעות שיחות
@@ -220,12 +227,19 @@ export default function DateTimePicker({ name, required, includeTime = false, de
               <span style={{ width: 10, height: 10, borderRadius: 3, background: 'rgba(255,100,100,0.15)', border: '1px solid rgba(255,100,100,0.3)', display: 'inline-block' }} />
               תפוס
             </span>
+            {!isFriday && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: 'rgba(255,180,50,0.15)', border: '1px solid rgba(255,180,50,0.3)', display: 'inline-block' }} />
+                הפסקת צהריים
+              </span>
+            )}
           </div>
           <div className="dtp-time-grid">
             {hours.map(({ h, m, label }) => {
               const booked = isBooked(h, m);
               const past = isPastTime(h, m);
-              const disabled = booked || past;
+              const lunch = isLunchBreak(h, m);
+              const disabled = booked || past || lunch;
               const call = isCallHour(h);
               return (
                 <button
@@ -236,10 +250,11 @@ export default function DateTimePicker({ name, required, includeTime = false, de
                     selectedHour === h && selectedMinute === m ? 'selected' : '',
                     booked ? 'booked' : '',
                     past && !booked ? 'past' : '',
+                    lunch && !booked ? 'lunch' : '',
                     call && !disabled ? 'call-hour' : '',
                   ].filter(Boolean).join(' ')}
                   onClick={() => !disabled && pickTime(h, m)}
-                  title={booked ? 'השעה תפוסה' : past ? 'עבר' : call ? 'שעות שיחות אפיון' : ''}
+                  title={booked ? 'השעה תפוסה' : lunch ? 'הפסקת צהריים 🍽️' : past ? 'עבר' : call ? 'שעות שיחות אפיון' : ''}
                 >
                   {label}
                 </button>
@@ -267,6 +282,17 @@ export default function DateTimePicker({ name, required, includeTime = false, de
           cursor: not-allowed;
         }
         .dtp-time.past:hover {
+          transform: none !important;
+        }
+        .dtp-time.lunch {
+          opacity: 0.35;
+          cursor: not-allowed;
+          background: rgba(255,180,50,0.10) !important;
+          border-color: rgba(255,180,50,0.25) !important;
+          color: var(--muted-dim) !important;
+        }
+        .dtp-time.lunch:hover {
+          background: rgba(255,180,50,0.10) !important;
           transform: none !important;
         }
         .dtp-time.call-hour {
