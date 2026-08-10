@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import { timeAgo } from '../../../lib/utils';
+import AutoSubmitSelect from '../../../components/AutoSubmitSelect';
 import { sendWhatsApp } from '../../../lib/whatsapp';
 import { lookupLot } from '../../../lib/bidspirit';
 
@@ -207,15 +208,14 @@ export default async function AuctionsPage() {
                       <td>
                         <form action={updateAuctionStatus} className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
                           <input type="hidden" name="auction_id" value={a.id} />
-                          <select name="status" defaultValue={a.status} style={{ width: 130 }}>
+                          <AutoSubmitSelect name="status" defaultValue={a.status} style={{ width: 130 }}>
                             <option value="submitted">הצעה הוגשה</option>
                             <option value="under_review">בבדיקת כונס</option>
                             <option value="won">זכייה</option>
                             <option value="pending_release">ממתין לשחרור</option>
                             <option value="lost">לא זכה</option>
                             <option value="cancelled">בוטל</option>
-                          </select>
-                          <SubmitButton className="btn small secondary">עדכון</SubmitButton>
+                          </AutoSubmitSelect>
                         </form>
                       </td>
                       <td>
