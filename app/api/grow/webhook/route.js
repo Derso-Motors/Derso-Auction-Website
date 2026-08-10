@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { CREDIT_PACKAGES, verifyWebhook } from '../../../lib/grow';
+import { CREDIT_PACKAGES, verifyWebhook } from '../../../../lib/grow';
 import { NextResponse } from 'next/server';
 
 const supabaseAdmin = () => createClient(
