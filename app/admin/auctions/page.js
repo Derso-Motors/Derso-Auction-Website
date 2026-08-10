@@ -10,7 +10,19 @@ import { lookupLot } from '../../../lib/bidspirit';
 
 export const dynamic = 'force-dynamic';
 
-const AUCTION_STATUSES = ['submitted', 'under_review', 'won', 'lost', 'cancelled', 'pending_release'];
+const AUCTION_STATUSES = [
+  'transfer10', 'redemption', 'transfer90', 'ownership_order', 'licensing', 'released',
+  // legacy values still accepted on existing rows
+  'submitted', 'under_review', 'won', 'lost', 'cancelled', 'pending_release',
+];
+const STAGE_OPTIONS = [
+  ['transfer10', 'העברת 10%'],
+  ['redemption', 'זכות פידיון'],
+  ['transfer90', 'העברת 90%'],
+  ['ownership_order', 'הזמנת צו העברת בעלות'],
+  ['licensing', 'אישורי משרד הרישוי'],
+  ['released', 'משוחרר — בדרך אליך'],
+];
 
 async function addWinByLink(formData) {
   'use server';
@@ -59,12 +71,17 @@ async function updateAuctionStatus(formData) {
   const { error } = await supabase.from('auctions').update(patch).eq('id', auctionId);
   if (error) redirect('/admin/auctions?err=' + encodeURIComponent('עדכון הסטטוס נכשל'));
 
-  if (['won', 'lost', 'pending_release'].includes(status)) {
+  if (['won', 'lost', 'pending_release', 'transfer10', 'redemption', 'transfer90', 'ownership_order', 'licensing', 'released'].includes(status)) {
     const { data: auction } = await supabase.from('auctions').select('car_title, client_id, profiles(full_name, phone)').eq('id', auctionId).single();
     const phone = auction?.profiles?.phone;
     const name = auction?.profiles?.full_name || '';
     if (phone) {
-      const statusMsg = { won: '🎉 זכית', lost: '❌ לא זכית', pending_release: '⏳ ממתין לשחרור' };
+      const statusMsg = {
+      won: '🎉 זכית', lost: '❌ לא זכית', pending_release: '⏳ ממתין לשחרור',
+      transfer10: '💸 שלב העברת 10% החל', redemption: '⏳ בתקופת זכות פידיון (7 ימים)',
+      transfer90: '💸 שלב העברת 90% החל', ownership_order: '📄 הוזמן צו העברת בעלות',
+      licensing: '🏢 בטיפול אישורי משרד הרישוי', released: '🚚 הרכב משוחרר — בדרך אליך!',
+    };
       const msg = `שלום ${name},\nעדכון מכרז — ${auction?.car_title}:\n${statusMsg[status] || status}${finalPrice ? `\nמחיר סופי: ₪${Number(finalPrice).toLocaleString()}` : ''}\n\nדרסו — בית ליווי מקצועי למכרזים`;
       await sendWhatsApp(phone, msg);
     }
@@ -102,13 +119,19 @@ export default async function AuctionsPage() {
     .order('full_name');
 
   const all = auctions || [];
-  const active = all.filter(a => ['submitted', 'under_review', 'pending_release'].includes(a.status));
-  const won = all.filter(a => a.status === 'won');
+  const active = all.filter(a => ['submitted', 'under_review', 'pending_release', 'transfer10', 'redemption', 'transfer90', 'ownership_order', 'licensing'].includes(a.status));
+  const won = all.filter(a => ['won', 'released', 'transfer10', 'redemption', 'transfer90', 'ownership_order', 'licensing'].includes(a.status));
   const lost = all.filter(a => a.status === 'lost');
   const totalBids = active.reduce((s, a) => s + (Number(a.max_bid) || 0), 0);
   const winRate = all.length > 0 ? Math.round((won.length / (won.length + lost.length || 1)) * 100) : 0;
 
   const statusLabel = {
+    transfer10: 'העברת 10%',
+    redemption: 'זכות פידיון',
+    transfer90: 'העברת 90%',
+    ownership_order: 'הזמנת צו העברת בעלות',
+    licensing: 'אישורי משרד הרישוי',
+    released: 'משוחרר — בדרך אליך',
     submitted: 'הצעה הוגשה',
     under_review: 'בבדיקת כונס',
     won: 'זכייה',
@@ -118,6 +141,12 @@ export default async function AuctionsPage() {
   };
 
   const statusClass = {
+    transfer10: 'in_progress',
+    redemption: 'awaiting_payment',
+    transfer90: 'in_progress',
+    ownership_order: 'awaiting_payment',
+    licensing: 'in_progress',
+    released: 'paid',
     submitted: 'in_progress',
     under_review: 'awaiting_payment',
     won: 'paid',
@@ -189,8 +218,8 @@ export default async function AuctionsPage() {
                       </td>
                       <td>{a.profiles?.full_name || '—'}</td>
                       <td style={{ fontWeight: 600 }}>
-                        ₪{Number((a.status === 'won' && a.final_price) ? a.final_price : (a.max_bid || 0)).toLocaleString()}
-                        {a.status === 'won' && a.final_price ? <div style={{ fontSize: 10.5, color: 'var(--success)' }}>מחיר זכייה</div> : null}
+                        ₪{Number(((a.status === 'won' || a.status === 'released') && a.final_price) ? a.final_price : (a.max_bid || 0)).toLocaleString()}
+                        {(a.status === 'won' || a.status === 'released') && a.final_price ? <div style={{ fontSize: 10.5, color: 'var(--success)' }}>מחיר זכייה</div> : null}
                       </td>
                       <td className="muted">
                         {a.closing_date ? new Date(a.closing_date).toLocaleDateString('he-IL') : '—'}
@@ -208,11 +237,13 @@ export default async function AuctionsPage() {
                       <td>
                         <form action={updateAuctionStatus} className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
                           <input type="hidden" name="auction_id" value={a.id} />
-                          <AutoSubmitSelect name="status" defaultValue={a.status} style={{ width: 130 }}>
-                            <option value="submitted">הצעה הוגשה</option>
-                            <option value="under_review">בבדיקת כונס</option>
-                            <option value="won">זכייה</option>
-                            <option value="pending_release">ממתין לשחרור</option>
+                          <AutoSubmitSelect name="status" defaultValue={a.status} style={{ width: 170 }}>
+                            {!STAGE_OPTIONS.some(([v]) => v === a.status) && (
+                              <option value={a.status} disabled>{statusLabel[a.status] || a.status}</option>
+                            )}
+                            {STAGE_OPTIONS.map(([v, l]) => (
+                              <option key={v} value={v}>{l}</option>
+                            ))}
                             <option value="lost">לא זכה</option>
                             <option value="cancelled">בוטל</option>
                           </AutoSubmitSelect>
