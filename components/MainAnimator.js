@@ -1,10 +1,40 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 
-// Re-mounts its subtree on every route change so the CSS entrance
-// animations replay on client-side navigation, not just full loads.
+// Staggers every meaningful element on the page (cards, titles, sections,
+// table rows) one after another — pricing-page style — on every navigation.
 export default function MainAnimator({ children }) {
   const pathname = usePathname();
-  return <div key={pathname} className="main-anim">{children}</div>;
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const els = root.querySelectorAll(
+      '.page-title, .page-sub, .card, .pr-card, .pr-hero, .pr-guarantee, .verify-banner, .info-msg, .error-msg'
+    );
+    let i = 0;
+    els.forEach((el) => {
+      // skip nested cards (a card inside a card) so containers don't double-animate
+      if (el.parentElement?.closest?.('.card') && el.classList.contains('card')) return;
+      el.style.animation = 'none';
+      // force reflow so the animation restarts even for reused DOM nodes
+      void el.offsetWidth;
+      el.style.animation = `page-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) ${0.08 + i * 0.12}s both`;
+      i += 1;
+    });
+
+    const rows = root.querySelectorAll('table.data tbody tr');
+    rows.forEach((tr, j) => {
+      tr.style.animation = 'none';
+      void tr.offsetWidth;
+      tr.style.animation = `row-fade 0.45s ease ${0.15 + Math.min(j, 12) * 0.06}s both`;
+    });
+  }, [pathname]);
+
+  return <div key={pathname} ref={ref} className="main-anim">{children}</div>;
 }

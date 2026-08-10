@@ -928,15 +928,8 @@ table.data tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
 }
 
 /* Entrance animation for every page — all direct children of .main rise in, staggered */
-.main-anim > * { animation: page-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.main-anim > *:nth-child(1) { animation-delay: 0s; }
-.main-anim > *:nth-child(2) { animation-delay: 0.06s; }
-.main-anim > *:nth-child(3) { animation-delay: 0.12s; }
-.main-anim > *:nth-child(4) { animation-delay: 0.18s; }
-.main-anim > *:nth-child(5) { animation-delay: 0.24s; }
-.main-anim > *:nth-child(6) { animation-delay: 0.3s; }
-.main-anim > *:nth-child(7) { animation-delay: 0.36s; }
-.main-anim > *:nth-child(n+8) { animation-delay: 0.42s; }
+/* Elements start hidden; MainAnimator assigns each its staggered entrance */
+.main-anim .page-title, .main-anim .page-sub, .main-anim .card { opacity: 0; animation: page-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.9s both; }
 /* stat tiles pop in with a slight scale */
 @keyframes stat-pop {
   from { opacity: 0; transform: translateY(14px) scale(0.96); }
