@@ -34,7 +34,6 @@ const ICONS = {
 const ADMIN_NAV = [
   { href: '/', key: 'home', label: 'ראשי', icon: 'home' },
   { href: '/admin', key: 'admin', label: 'ניהול', icon: 'admin' },
-  { href: '/admin/cars', key: 'cars', label: 'רכבים', icon: 'cars' },
   { href: '/admin/clients', key: 'clients', label: 'לקוחות', icon: 'clients' },
   { href: '/admin/orders', key: 'orders', label: 'הזמנות דוחות', icon: 'orders' },
   { href: '/admin/calendar', key: 'calendar', label: 'יומן פגישות', icon: 'calendar' },

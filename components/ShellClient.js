@@ -6,7 +6,6 @@ import { createClient } from '../lib/supabase-client';
 const SEARCH_ITEMS = [
   { label: 'ראשי', href: '/' },
   { label: 'ניהול', href: '/admin' },
-  { label: 'רכבים', href: '/admin/cars' },
   { label: 'לקוחות', href: '/admin/clients' },
   { label: 'הזמנות דוחות', href: '/admin/orders' },
   { label: 'יומן פגישות', href: '/admin/calendar' },

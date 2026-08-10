@@ -30,7 +30,6 @@ export default async function AdminPage() {
   const broadcastRevenue = activeBroadcastSubs.reduce((sum, s) => sum + Number(s.monthly_fee || 0), 0);
 
   const sections = [
-    { href: '/admin/cars', icon: '🚗', label: 'רכבים', desc: 'ניהול רכבים, שלבים ועדכונים', count: carCount },
     { href: '/admin/clients', icon: '👥', label: 'לקוחות', desc: 'ניהול לקוחות וקרדיטים', count: clientCount },
     { href: '/admin/orders', icon: '📄', label: 'הזמנות דוחות', desc: 'הזמנות דוחות ותשלומים', count: orderCount },
     { href: '/admin/calendar', icon: '📅', label: 'יומן פגישות', desc: 'קביעה וניהול פגישות', count: meetingCount },

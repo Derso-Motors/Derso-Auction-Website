@@ -188,7 +188,7 @@ export default async function Dashboard({ searchParams }) {
             <div className="card">
               <div className="row between" style={{ marginBottom: 16 }}>
                 <h3 style={{ margin: 0 }}>רכבים בטיפול</h3>
-                <Link href="/admin/cars" className="btn small secondary">הצג הכל ({activeCars.length})</Link>
+                <Link href="/admin/auctions" className="btn small secondary">הצג הכל ({activeCars.length})</Link>
               </div>
               {!activeCars.length && <div className="empty">אין רכבים בתהליך כרגע</div>}
               {activeCars.slice(0, 5).map((car) => {
@@ -332,7 +332,7 @@ export default async function Dashboard({ searchParams }) {
                 })}
               </div>
               <div style={{ padding: 8, borderTop: '1px solid var(--border)', textAlign: 'center' }}>
-                <Link href="/admin/cars" style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>צפה בכל הרכבים</Link>
+                <Link href="/admin/auctions" style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>למעקב מכרזים</Link>
               </div>
             </div>
 
