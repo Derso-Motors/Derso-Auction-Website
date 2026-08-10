@@ -2,6 +2,7 @@ import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
 import DateTimePicker from '../../../components/DateTimePicker';
 import MeetingsTable from '../../../components/MeetingsTable';
+import { ilDateTimeToUtc } from '../../../lib/callBookings';
 import { requireUser } from '../../../lib/supabase-server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
@@ -169,6 +170,44 @@ async function addMeeting(formData) {
   redirect('/admin/calendar?ok=' + encodeURIComponent(phone ? 'הפגישה נקבעה ונשלחה הודעת וואטסאפ ✓' : 'הפגישה נקבעה ✓'));
 }
 
+async function rescheduleMeeting(formData) {
+  'use server';
+  const supabase = await requireAdmin();
+  const id = String(formData.get('id') || '');
+  const when = String(formData.get('when') || ''); // "YYYY-MM-DDTHH:MM" Israel local
+  const P = '/admin/calendar';
+  const m = when.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/);
+  if (!id || !m) redirect(P + '?err=' + encodeURIComponent('מועד לא תקין'));
+  const newAt = ilDateTimeToUtc(m[1], m[2]);
+
+  const { data: row } = await supabase.from('meetings')
+    .select('gcal_event_id, title, client_name, client_phone, scheduled_at')
+    .eq('id', id).single();
+  if (!row) redirect(P + '?err=' + encodeURIComponent('הפגישה לא נמצאה'));
+
+  // old calendar event goes to the deletion queue; sync recreates at the new time
+  if (row.gcal_event_id) {
+    try { await supabase.from('cal_deletions').upsert({ gcal_event_id: row.gcal_event_id }); } catch {}
+  }
+  const { error } = await supabase.from('meetings').update({
+    scheduled_at: newAt.toISOString(),
+    status: 'scheduled',
+    gcal_event_id: null,
+    reminder_1d_sent: false,
+    reminder_15m_sent: false,
+    reminder_1h_sent: false,
+  }).eq('id', id);
+  if (error) redirect(P + '?err=' + encodeURIComponent('שינוי המועד נכשל'));
+
+  if (row.client_phone) {
+    const nice = newAt.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    await sendWhatsApp(row.client_phone,
+      `שלום ${row.client_name || ''},\nעדכון: הפגישה "${row.title}" הועברה למועד חדש — ${nice}.\nנתראה! 🚗\n\nדרסו — בית ליווי מקצועי למכרזים`);
+  }
+  revalidatePath(P);
+  redirect(P + '?ok=' + encodeURIComponent('המועד עודכן והלקוח קיבל וואטסאפ ✓'));
+}
+
 async function deleteMeeting(formData) {
   'use server';
   const supabase = await requireAdmin();
@@ -226,6 +265,7 @@ export default async function CalendarPage() {
             <h3>כל הפגישות</h3>
             <MeetingsTable
               deleteAction={deleteMeeting}
+              rescheduleAction={rescheduleMeeting}
               meetingTypes={MEETING_TYPES.map((t) => ({ value: t.value, emoji: t.emoji }))}
               meetings={(meetings || []).map((m) => ({
                 id: m.id,

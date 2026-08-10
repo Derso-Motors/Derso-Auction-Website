@@ -6,8 +6,9 @@ import { DeleteButton } from './SubmitButton';
 const TZ = 'Asia/Jerusalem';
 
 // טבלת פגישות עם חיפוש/סינון + גלילה פנימית (לא גוררת את הדף).
-export default function MeetingsTable({ meetings = [], deleteAction, meetingTypes = [] }) {
+export default function MeetingsTable({ meetings = [], deleteAction, rescheduleAction, meetingTypes = [] }) {
   const [q, setQ] = useState('');
+  const [editing, setEditing] = useState(null);
 
   const rows = useMemo(() => {
     const norm = (s) => String(s || '').toLowerCase();
@@ -19,6 +20,11 @@ export default function MeetingsTable({ meetings = [], deleteAction, meetingType
         _date: d.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: TZ }),
         _time: d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: TZ }),
         _past: d < new Date(),
+        _dtLocal: (() => {
+          const p = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d);
+          const g = (t) => p.find((x) => x.type === t)?.value || '';
+          return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}`;
+        })(),
         _type: (meetingTypes.find((t) => t.value === m.location) || {}),
       };
     }).filter((m) => {
@@ -59,10 +65,26 @@ export default function MeetingsTable({ meetings = [], deleteAction, meetingType
                   <td className="muted" style={{ fontSize: 12, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.notes || '—'}</td>
                   <td><span className={`badge ${m._past ? 'done' : 'in_progress'}`}>{m._past ? 'עבר' : 'מתוכנן'}</span></td>
                   <td>
-                    <form action={deleteAction}>
-                      <input type="hidden" name="id" value={m.id} />
-                      <DeleteButton title="מחיקה" />
-                    </form>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {rescheduleAction && (
+                        <button type="button" className="btn small secondary" title="שינוי מועד"
+                          onClick={() => setEditing(editing === m.id ? null : m.id)}>
+                          🕐
+                        </button>
+                      )}
+                      <form action={deleteAction}>
+                        <input type="hidden" name="id" value={m.id} />
+                        <DeleteButton title="מחיקה" />
+                      </form>
+                    </div>
+                    {editing === m.id && rescheduleAction && (
+                      <form action={rescheduleAction} style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
+                        <input type="hidden" name="id" value={m.id} />
+                        <input name="when" type="datetime-local" defaultValue={m._dtLocal} required
+                          style={{ padding: '6px 8px', fontSize: 12.5, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-lowest)', color: 'var(--text)', fontFamily: 'inherit' }} />
+                        <button type="submit" className="btn small">שמור</button>
+                      </form>
+                    )}
                   </td>
                 </tr>
               ))}
