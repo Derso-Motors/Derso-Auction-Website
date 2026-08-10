@@ -36,7 +36,7 @@ async function addWinByLink(formData) {
   if (!looked.ok) redirect(P + '?err=' + encodeURIComponent(looked.error || 'שליפת הרכב נכשלה'));
 
   const car = looked.car;
-  const auctionDate = formData.get('auction_date') || new Date().toISOString().slice(0, 10);
+  const auctionDate = formData.get('auction_date') || car.auction_date || new Date().toISOString().slice(0, 10);
   const row = {
     client_id: formData.get('client_id') || null,
     car_title: car.title + (car.km ? ` · ${Number(String(car.km).replace(/[^\d]/g, '')) ? Number(String(car.km).replace(/[^\d]/g, '')).toLocaleString() + ' ק"מ' : car.km}` : ''),

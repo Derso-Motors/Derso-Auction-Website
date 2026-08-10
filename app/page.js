@@ -102,18 +102,22 @@ export default async function Dashboard({ searchParams }) {
       const done = (c.car_stages || []).filter(s => s.status === 'done').length;
       return done < 6;
     });
-    const activeAuctions = (auctions || []).filter(a => ['submitted', 'under_review', 'pending_release'].includes(a.status));
+    const activeAuctions = (auctions || []).filter(a => ['submitted', 'under_review', 'pending_release', 'transfer10', 'redemption', 'transfer90', 'ownership_order', 'licensing'].includes(a.status));
     const upcomingMeetings = (meetings || []).filter(m => new Date(m.scheduled_at) >= new Date());
     const recentUpdatedCars = (cars || []).filter(c => c.car_updates?.length > 0 || c.image_url).slice(0, 5);
     const statusLabel = { awaiting_payment: 'ממתין לתשלום', paid: 'שולם', delivered: 'נמסר', cancelled: 'בוטל' };
     const auctionStatusLabel = {
-      submitted: 'הצעה הוגשה', under_review: 'בבדיקת כונס', won: 'זכייה',
-      lost: 'לא זכה', cancelled: 'בוטל', pending_release: 'ממתין לשחרור',
-    };
+    transfer10: 'העברת 10%', redemption: 'זכות פידיון', transfer90: 'העברת 90%',
+    ownership_order: 'הזמנת צו העברת בעלות', licensing: 'אישורי משרד הרישוי', released: 'משוחרר — בדרך אליך',
+    submitted: 'הצעה הוגשה', under_review: 'בבדיקת כונס', won: 'זכייה',
+    lost: 'לא זכה', cancelled: 'בוטל', pending_release: 'ממתין לשחרור',
+  };
     const auctionStatusClass = {
-      submitted: 'in_progress', under_review: 'awaiting_payment', won: 'paid',
-      lost: 'cancelled', cancelled: 'cancelled', pending_release: 'in_progress',
-    };
+    transfer10: 'in_progress', redemption: 'awaiting_payment', transfer90: 'in_progress',
+    ownership_order: 'awaiting_payment', licensing: 'in_progress', released: 'paid',
+    submitted: 'in_progress', under_review: 'awaiting_payment', won: 'paid',
+    lost: 'cancelled', cancelled: 'cancelled', pending_release: 'in_progress',
+  };
 
     return (
       <Shell active="home">
@@ -413,12 +417,16 @@ export default async function Dashboard({ searchParams }) {
     supabase.from('call_bookings').select('id').eq('client_id', user.id).neq('status', 'cancelled').gte('starts_at', new Date().toISOString()).limit(1),
   ]);
 
-  const activeAuctions = (auctions || []).filter(a => ['submitted', 'under_review', 'pending_release'].includes(a.status));
+  const activeAuctions = (auctions || []).filter(a => ['submitted', 'under_review', 'pending_release', 'transfer10', 'redemption', 'transfer90', 'ownership_order', 'licensing'].includes(a.status));
   const auctionStatusLabel = {
+    transfer10: 'העברת 10%', redemption: 'זכות פידיון', transfer90: 'העברת 90%',
+    ownership_order: 'הזמנת צו העברת בעלות', licensing: 'אישורי משרד הרישוי', released: 'משוחרר — בדרך אליך',
     submitted: 'הצעה הוגשה', under_review: 'בבדיקת כונס', won: 'זכייה',
     lost: 'לא זכה', cancelled: 'בוטל', pending_release: 'ממתין לשחרור',
   };
   const auctionStatusClass = {
+    transfer10: 'in_progress', redemption: 'awaiting_payment', transfer90: 'in_progress',
+    ownership_order: 'awaiting_payment', licensing: 'in_progress', released: 'paid',
     submitted: 'in_progress', under_review: 'awaiting_payment', won: 'paid',
     lost: 'cancelled', cancelled: 'cancelled', pending_release: 'in_progress',
   };
