@@ -60,6 +60,14 @@ export default async function WalletPage({ searchParams }) {
               <h3 style={{ marginBottom: 4 }}>{pkg.label}</h3>
               <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--accent)' }}>₪{pkg.credits.toLocaleString()}</div>
               <div className="muted" style={{ fontSize: 13 }}>קרדיטים נטענים מיידית לארנק</div>
+              {pkg.discount && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, margin: '8px 0 0' }}>
+                  <span style={{ background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid rgba(34,197,94,0.4)', borderRadius: 999, padding: '2px 12px', fontSize: 12, fontWeight: 700 }}>
+                    🔥 {pkg.discount}
+                  </span>
+                  <span className="muted" style={{ textDecoration: 'line-through', fontSize: 13 }}>₪{pkg.listPrice.toLocaleString()}</span>
+                </div>
+              )}
               <div style={{ fontSize: 14, margin: '10px 0', color: 'var(--fg-muted)' }}>לתשלום: ₪{pkg.price.toLocaleString()}</div>
               <PayPopup url={payUrl} className="btn" style={{ display: 'block', textAlign: 'center', width: '100%', textDecoration: 'none' }}>
                 טעינה — ₪{pkg.price.toLocaleString()}

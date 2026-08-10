@@ -886,3 +886,31 @@ label { display: block; font-size: 11.5px; font-weight: 600; margin-bottom: 5px;
 .credits-chip:hover { filter: brightness(1.2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(186,199,227,0.25); }
 .credits-chip-icon { font-size: 14px; }
 @media (max-width: 600px) { .credits-chip { padding: 4px 10px; font-size: 12.5px; } }
+
+/* ============ GLOBAL PAGE ANIMATIONS ============ */
+@keyframes page-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-title { animation: page-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.page-sub { animation: page-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both; }
+.main .card { animation: page-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.main .card:nth-of-type(2) { animation-delay: 0.08s; }
+.main .card:nth-of-type(3) { animation-delay: 0.16s; }
+.main .card:nth-of-type(4) { animation-delay: 0.24s; }
+.main .grid > .card { animation: page-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.main .grid > .card:nth-child(2) { animation-delay: 0.08s; }
+.main .grid > .card:nth-child(3) { animation-delay: 0.16s; }
+.main .grid > .card:nth-child(4) { animation-delay: 0.24s; }
+.card { transition: border-color 0.2s, transform 0.25s, box-shadow 0.25s; }
+.card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3); }
+.btn { transition: all 0.2s; }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3); }
+.btn:active { transform: scale(0.97); }
+table.data tbody tr { transition: background 0.15s; }
+table.data tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+.info-msg, .error-msg { animation: page-rise 0.4s ease both; }
+@media (prefers-reduced-motion: reduce) {
+  .page-title, .page-sub, .main .card, .main .grid > .card, .info-msg, .error-msg { animation: none; }
+  .card:hover, .btn:hover { transform: none; }
+}
