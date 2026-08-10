@@ -220,9 +220,9 @@ export default async function CalendarPage() {
             <form action={addMeeting}>
               <div className="field">
                 <label>לקוח</label>
-                <select name="client_id" required>
-                  {clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id}</option>)}
+                <select name="client_id" required defaultValue="__walk_in__">
                   <option value="__walk_in__">+ לקוח חד-פעמי (לא רשום)</option>
+                  {clientOptions.map((c) => <option key={c.id} value={c.id}>{c.full_name || c.id}</option>)}
                 </select>
               </div>
               <div className="field"><label>שם לקוח (ללא רשום)</label><input name="client_name" placeholder="שם הלקוח" /></div>
