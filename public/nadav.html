@@ -61,8 +61,10 @@
   .pill.no{opacity:.45;text-decoration:line-through}
   .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
   .feed{display:flex;flex-direction:column;max-height:300px;overflow:auto}
-  .feed .row{display:flex;gap:9px;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.05);font-size:13.5px}
-  .feed .t{color:#64748b;font-size:11px;white-space:nowrap;margin-inline-start:auto}
+  .feed .row{display:flex;gap:9px;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.05);font-size:13.5px;align-items:flex-start}
+  .feed .row>.ic{flex-shrink:0}
+  .feed .row .msg{flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;overflow-wrap:anywhere;white-space:pre-wrap}
+  .feed .t{color:#64748b;font-size:11px;white-space:nowrap;flex-shrink:0}
   .rel{background:#f59e0b14;border:1px solid #f59e0b55;border-radius:10px;padding:8px 10px;margin-bottom:6px;font-size:13px}
   .muted{color:var(--muted)}
   .term{margin-top:14px;background:#05070c;border:1px solid var(--line);border-radius:12px;height:200px;overflow:auto;
@@ -142,10 +144,10 @@ function render(s){
   }
   const ev=s.events||[];
   $('feed').innerHTML=(s.releases||[]).map(x=>'<div class="rel">📩 אישור שחרור: '+x.car+(x.yard?' ב'+x.yard:'')+'</div>').join('')+
-    (ev.length?ev.map(e=>'<div class="row"><span>'+(e.icon||'•')+'</span><span>'+e.text+'</span><span class="t">'+(e.ts?new Date(e.ts).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}):'')+'</span></div>').join(''):'<div class="muted" style="padding:6px;font-size:13px">אין אירועים עדיין…</div>');
+    (ev.length?ev.map(e=>'<div class="row"><span class="ic">'+(e.icon||'•')+'</span><span class="msg">'+String(e.text||'').slice(0,300)+'</span><span class="t">'+(e.ts?new Date(e.ts).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}):'')+'</span></div>').join(''):'<div class="muted" style="padding:6px;font-size:13px">אין אירועים עדיין…</div>');
   const fresh=ev.filter(e=>e.ts&&e.ts>lastTs).sort((a,b)=>a.ts-b.ts);
   for(const e of fresh)term('out',(e.icon||'•')+' '+e.text);
-  if(fresh.length){lastTs=fresh[fresh.length-1].ts;speak(fresh[fresh.length-1].text);}
+  if(fresh.length){lastTs=fresh[fresh.length-1].ts;speak(String(fresh[fresh.length-1].text||'').replace(/https?:\/\/\S+/g,'').slice(0,220));}
   // "נדב פותח" — כשנדב פותר יעד ללינק, פותחים אותו בדפדפן ומציגים קישור לחיץ.
   const op=s.open;
   if(op&&op.ts&&op.ts>lastOpenTs){
