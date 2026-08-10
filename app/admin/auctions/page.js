@@ -1,5 +1,4 @@
 import Shell from '../../../components/Shell';
-import DateTimePicker from '../../../components/DateTimePicker';
 import { requireUser } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -11,28 +10,6 @@ import { lookupLot } from '../../../lib/bidspirit';
 export const dynamic = 'force-dynamic';
 
 const AUCTION_STATUSES = ['submitted', 'under_review', 'won', 'lost', 'cancelled', 'pending_release'];
-
-async function addAuction(formData) {
-  'use server';
-  const { supabase, user } = await requireUser();
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') redirect('/');
-
-  const clientId = formData.get('client_id');
-  const row = {
-    client_id: clientId || null,
-    car_title: formData.get('car_title'),
-    auction_source: formData.get('auction_source') || null,
-    case_number: formData.get('case_number') || null,
-    max_bid: Number(formData.get('max_bid')) || 0,
-    closing_date: formData.get('closing_date') || null,
-    status: 'submitted',
-  };
-  const { error } = await supabase.from('auctions').insert(row);
-  if (error) redirect('/admin/auctions?err=' + encodeURIComponent('הוספת המכרז נכשלה'));
-  revalidatePath('/admin/auctions');
-  redirect('/admin/auctions?ok=' + encodeURIComponent('המכרז נוסף ✓'));
-}
 
 async function addWinByLink(formData) {
   'use server';
@@ -287,46 +264,6 @@ export default async function AuctionsPage() {
                 </select>
               </div>
               <SubmitButton className="btn" style={{ width: '100%' }}>🏆 רישום הזכייה</SubmitButton>
-            </form>
-          </div>
-
-          <div className="card">
-            <h3>הוספת מכרז חדש</h3>
-            <form action={addAuction}>
-              <div className="field">
-                <label>שם רכב / תיאור</label>
-                <input name="car_title" required placeholder="Toyota Land Cruiser 2022" />
-              </div>
-              <div className="field">
-                <label>לקוח</label>
-                <select name="client_id">
-                  <option value="">— ללא —</option>
-                  {(clients || []).map(c => (
-                    <option key={c.id} value={c.id}>{c.full_name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid cols-2">
-                <div className="field">
-                  <label>מקור מכרז</label>
-                  <input name="auction_source" placeholder='הוצל"פ / כונס / ליסינג' />
-                </div>
-                <div className="field">
-                  <label>מס׳ תיק</label>
-                  <input name="case_number" placeholder="#99281-A" dir="ltr" />
-                </div>
-              </div>
-              <div className="grid cols-2">
-                <div className="field">
-                  <label>הצעה מקסימלית (₪)</label>
-                  <input name="max_bid" type="number" dir="ltr" required placeholder="245000" />
-                </div>
-                <div className="field">
-                  <label>תאריך סגירה</label>
-                  <DateTimePicker name="closing_date" />
-                </div>
-              </div>
-              <SubmitButton className="btn" style={{ width: '100%', marginTop: 8 }}>הוסף מכרז</SubmitButton>
             </form>
           </div>
 
