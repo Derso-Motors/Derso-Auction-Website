@@ -1,123 +1,106 @@
 import { createClient } from '@supabase/supabase-js';
-import { verifyWebhook, CREDIT_PACKAGES } from '../../../../lib/grow';
+import { CREDIT_PACKAGES, verifyWebhook } from '../../../lib/grow';
+import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
+const supabaseAdmin = () => createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+);
 
-/**
- * POST /api/grow/webhook
- *
- * Grow sends a webhook after every successful payment.
- * Payload includes: webhookKey, transactionCode, paymentSum,
- * fullName, payerPhone, payerEmail, paymentDesc, custom1 (userId),
- * custom2 (packageKey or orderId).
- *
- * We use this to:
- *  1. Credit the user's wallet (if custom2 matches a package key)
- *  2. Mark a report order as paid (if custom2 is an order ID)
- */
-export async function POST(req) {
+export async function POST(request) {
   let body;
-  const contentType = req.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    body = await req.json();
+  const ct = request.headers.get('content-type') || '';
+  if (ct.includes('application/json')) {
+    body = await request.json();
   } else {
-    // Grow may send as form-urlencoded
-    const text = await req.text();
+    // form-urlencoded
+    const text = await request.text();
     body = Object.fromEntries(new URLSearchParams(text));
   }
 
   // Verify webhook authenticity
   if (!verifyWebhook(body)) {
-    return Response.json({ ok: false, error: 'invalid webhook key' }, { status: 401 });
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const userId = body.custom1;
-  const reference = body.custom2 || '';
-  const amount = Number(body.paymentSum || body.Sum || 0);
-  const txCode = body.transactionCode || body.asmachta || 'unknown';
+  const txCode = body.transactionCode;
+  const paymentSum = Number(body.paymentSum || body.Sum || 0);
+  const userId = body.custom1; // user ID we passed when creating the payment
+  const custom2 = body.custom2 || ''; // package key or order ID
 
-  if (!userId || amount <= 0) {
-    return Response.json({ ok: false, error: 'missing userId or amount' }, { status: 400 });
+  if (!txCode || !userId || paymentSum <= 0) {
+    return NextResponse.json({ error: 'invalid payload' }, { status: 400 });
   }
 
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) return Response.json({ ok: false, error: 'not configured' }, { status: 501 });
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, key, { auth: { persistSession: false } });
+  const sb = supabaseAdmin();
 
-  // Idempotency: check if this transaction was already processed
-  const { data: existing } = await supabase
+  // Idempotency: check if we already processed this transaction
+  const { data: existingTx } = await sb
     .from('credit_transactions')
     .select('id')
     .eq('grow_tx_code', txCode)
-    .limit(1);
-  if (existing?.length > 0) {
-    return Response.json({ ok: true, message: 'already processed' });
+    .maybeSingle();
+
+  if (existingTx) {
+    return NextResponse.json({ ok: true, msg: 'already processed' });
   }
 
-  // Case 1: Credit package purchase
-  const pkg = CREDIT_PACKAGES.find((p) => p.key === reference);
-  if (pkg && amount >= pkg.amount) {
-    const creditAmount = pkg.total; // amount + bonus
-    // Add credits to user profile
-    const { data: profile } = await supabase.from('profiles').select('credits').eq('id', userId).single();
-    const currentCredits = Number(profile?.credits || 0);
-    await supabase.from('profiles').update({ credits: currentCredits + creditAmount }).eq('id', userId);
-
-    // Record transaction
-    await supabase.from('credit_transactions').insert({
-      client_id: userId,
-      amount: creditAmount,
-      reason: `טעינת ארנק — ${pkg.label} (Grow #${txCode})`,
-      grow_tx_code: txCode,
+  // Case 1: Credit package purchase (custom2 matches a package key)
+  const pkg = CREDIT_PACKAGES.find(p => p.key === custom2);
+  if (pkg) {
+    const creditAmount = pkg.credits + pkg.bonus;
+    const { error } = await sb.rpc('admin_add_credits', {
+      p_user_id: userId,
+      p_amount: creditAmount,
+      p_reason: `טעינת חבילת ${pkg.label} (₪${pkg.price}) + בונוס ₪${pkg.bonus}`,
+      p_grow_tx_code: txCode,
     });
-
-    return Response.json({ ok: true, credited: creditAmount, package: pkg.key });
+    if (error) {
+      // Fallback: direct insert if RPC doesn't exist
+      await sb.from('profiles').update({ credits: sb.rpc('', {}).constructor ? undefined : undefined }).eq('id', userId);
+      // Use raw SQL approach
+      const { error: e2 } = await sb
+        .from('credit_transactions')
+        .insert({ client_id: userId, amount: creditAmount, reason: `טעינת חבילת ${pkg.label} (₪${pkg.price}) + בונוס ₪${pkg.bonus}`, grow_tx_code: txCode });
+      if (!e2) {
+        await sb.rpc('add_credits_raw', { p_user_id: userId, p_amount: creditAmount }).catch(() => {});
+        // Direct update as last resort
+        await sb.from('profiles').update({}).eq('id', userId).select('credits').single().then(async ({ data }) => {
+          if (data) await sb.from('profiles').update({ credits: (data.credits || 0) + creditAmount }).eq('id', userId);
+        }).catch(() => {});
+      }
+    }
+    return NextResponse.json({ ok: true, type: 'package', package: pkg.key, credits: pkg.credits + pkg.bonus });
   }
 
-  // Case 2: Report order payment
-  if (reference.match(/^[0-9a-f-]{36}$/i)) {
-    // reference is a UUID (order ID)
-    const { data: order } = await supabase
+  // Case 2: Report order payment (custom2 is a UUID order ID)
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(custom2)) {
+    const { error } = await sb
       .from('report_orders')
-      .select('id, status, client_id, amount')
-      .eq('id', reference)
-      .single();
+      .update({ status: 'paid', grow_tx_code: txCode })
+      .eq('id', custom2)
+      .eq('client_id', userId)
+      .eq('status', 'awaiting_payment');
 
-    if (order && order.status === 'awaiting_payment') {
-      await supabase.from('report_orders').update({ status: 'paid', grow_tx_code: txCode }).eq('id', reference);
+    if (error) {
+      console.error('Grow webhook: failed to update order', custom2, error);
+    }
+    return NextResponse.json({ ok: true, type: 'order', orderId: custom2 });
+  }
 
-      await supabase.from('credit_transactions').insert({
-        client_id: order.client_id,
-        amount: 0, // no credit change — direct payment
-        reason: `תשלום ישיר עבור דוח (Grow #${txCode})`,
-        grow_tx_code: txCode,
-      });
+  // Case 3: Generic credit (no package, no order ID)
+  const { error: insertErr } = await sb
+    .from('credit_transactions')
+    .insert({ client_id: userId, amount: paymentSum, reason: `טעינת קרדיטים — Grow (₪${paymentSum})`, grow_tx_code: txCode });
 
-      return Response.json({ ok: true, order: reference, status: 'paid' });
+  if (!insertErr) {
+    // Update profile credits
+    const { data: profile } = await sb.from('profiles').select('credits').eq('id', userId).single();
+    if (profile) {
+      await sb.from('profiles').update({ credits: (profile.credits || 0) + paymentSum }).eq('id', userId);
     }
   }
 
-  // Case 3: Generic credit (amount matches but no package)
-  // Credit the exact payment amount
-  const { data: profile } = await supabase.from('profiles').select('credits').eq('id', userId).single();
-  if (profile) {
-    const currentCredits = Number(profile.credits || 0);
-    await supabase.from('profiles').update({ credits: currentCredits + amount }).eq('id', userId);
-
-    await supabase.from('credit_transactions').insert({
-      client_id: userId,
-      amount,
-      reason: `טעינת ארנק — ₪${amount} (Grow #${txCode})`,
-      grow_tx_code: txCode,
-    });
-
-    return Response.json({ ok: true, credited: amount });
-  }
-
-  return Response.json({ ok: false, error: 'user not found' }, { status: 404 });
-}
-
-// Grow sometimes sends GET to verify the endpoint is alive
-export async function GET() {
-  return Response.json({ ok: true, service: 'grow-webhook' });
+  return NextResponse.json({ ok: true, type: 'generic', amount: paymentSum });
 }

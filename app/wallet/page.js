@@ -1,127 +1,112 @@
 import Shell from '../../components/Shell';
 import { requireUser } from '../../lib/supabase-server';
 import { CREDIT_PACKAGES, buildPaymentUrl } from '../../lib/grow';
-import { revalidatePath } from 'next/cache';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-export default async function WalletPage() {
+export default async function WalletPage({ searchParams }) {
   const { supabase, user } = await requireUser();
 
   const [{ data: profile }, { data: txns }] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('credit_transactions').select('*').eq('client_id', user.id).order('created_at', { ascending: false }).limit(30),
+    supabase.from('profiles').select('credits').eq('id', user.id).single(),
+    supabase.from('credit_transactions').select('*').eq('client_id', user.id).order('created_at', { ascending: false }).limit(20),
   ]);
 
   const credits = Number(profile?.credits || 0);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://auctions.derso.net';
 
-  const packages = CREDIT_PACKAGES.map((pkg) => {
-    const payUrl = buildPaymentUrl({
-      amount: pkg.amount,
-      description: `דרסו — טעינת ארנק ${pkg.label}`,
-      userId: user.id,
-      orderId: pkg.key,
-      successUrl: `${baseUrl}/wallet?ok=${encodeURIComponent('התשלום התקבל! הקרדיטים יתעדכנו תוך דקה ✓')}`,
-      cancelUrl: `${baseUrl}/wallet?err=${encodeURIComponent('התשלום בוטל')}`,
-      payerEmail: user.email,
-      payerPhone: profile?.phone,
-      payerName: profile?.full_name,
-    });
-    return { ...pkg, payUrl };
-  });
-
   return (
     <Shell active="wallet">
-      <div className="page-title">ארנק דרסו</div>
-      <div className="page-sub">טעינת קרדיטים לתשלום מהיר על דוחות ושירותים</div>
+      <div className="page-title">💳 ארנק דרסו</div>
+      <div className="page-sub">טעינת קרדיטים, היתרה שלך ופירוט תנועות</div>
 
-      {/* Balance card */}
-      <div className="card" style={{ background: 'linear-gradient(135deg, var(--surface-high) 0%, var(--surface) 100%)', textAlign: 'center', padding: '32px 24px' }}>
-        <div style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 8 }}>יתרת הארנק שלך</div>
-        <div style={{ fontSize: 48, fontWeight: 800, color: 'var(--primary)', lineHeight: 1 }}>
+      {searchParams?.ok && <div className="info-msg">{searchParams.ok}</div>}
+      {searchParams?.err && <div className="error-msg">{searchParams.err}</div>}
+
+      <div className="card" style={{ textAlign: 'center', padding: '32px 24px' }}>
+        <div className="muted" style={{ fontSize: 14, marginBottom: 4 }}>היתרה שלך</div>
+        <div style={{ fontSize: 48, fontWeight: 700, color: 'var(--accent)', lineHeight: 1.1 }}>
           ₪{credits.toLocaleString()}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
-          ניתן לשלם בקרדיטים על דוחות בדיקה ושירותים נוספים
+        <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+          קרדיטים לתשלום על דוחות, מנויים ושירותים
         </div>
       </div>
 
-      {/* Credit packages */}
-      <div style={{ marginTop: 24 }}>
-        <h3 style={{ marginBottom: 16 }}>טעינת קרדיטים</h3>
-        <div className="grid cols-2" style={{ gap: 16 }}>
-          {packages.map((pkg) => (
-            <div
-              key={pkg.key}
-              className="card"
-              style={{
-                position: 'relative',
-                border: pkg.popular ? '2px solid var(--primary)' : '1px solid var(--border)',
-                textAlign: 'center',
-                padding: '24px 16px',
-              }}
-            >
-              {pkg.popular && (
+      <div className="page-title" style={{ fontSize: 18, marginTop: 24 }}>חבילות טעינה</div>
+      <div className="grid cols-2" style={{ gap: 16 }}>
+        {CREDIT_PACKAGES.map((pkg) => {
+          let payUrl;
+          try {
+            payUrl = buildPaymentUrl({
+              sum: pkg.price,
+              description: `דרסו — חבילת ${pkg.label} (₪${pkg.credits} + בונוס ₪${pkg.bonus})`,
+              successUrl: `${baseUrl}/wallet?ok=${encodeURIComponent(`חבילת ${pkg.label} נטענה בהצלחה! ₪${pkg.credits + pkg.bonus} קרדיטים נוספו ✓`)}`,
+              cancelUrl: `${baseUrl}/wallet?err=${encodeURIComponent('התשלום בוטל')}`,
+              userId: user.id,
+              custom2: pkg.key,
+            });
+          } catch {
+            payUrl = null;
+          }
+
+          return (
+            <div key={pkg.key} className="card" style={{ position: 'relative', overflow: 'hidden' }}>
+              {pkg.tag && (
                 <div style={{
-                  position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
-                  background: 'var(--primary)', color: '#000', fontSize: 11, fontWeight: 700,
-                  padding: '2px 12px', borderRadius: 12, whiteSpace: 'nowrap',
-                }}>
-                  ⭐ הכי פופולרי
-                </div>
+                  position: 'absolute', top: 12, left: -28,
+                  background: pkg.tag === 'הכי פופולרי' ? 'var(--accent)' : 'var(--success)',
+                  color: '#fff', fontSize: 11, fontWeight: 700,
+                  padding: '3px 32px', transform: 'rotate(-45deg)',
+                  transformOrigin: 'center',
+                }}>{pkg.tag}</div>
               )}
-              <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text)' }}>
-                ₪{pkg.amount.toLocaleString()}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--success)', fontWeight: 600, margin: '6px 0' }}>
-                + בונוס ₪{pkg.bonus} 🎁
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
-                סה"כ ₪{pkg.total.toLocaleString()} בארנק
-              </div>
-              {pkg.payUrl ? (
-                <a href={pkg.payUrl} className="btn" style={{ display: 'block', textDecoration: 'none' }}>
-                  טעינה — ₪{pkg.amount.toLocaleString()}
+              <h3 style={{ marginBottom: 4 }}>{pkg.label}</h3>
+              <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--accent)' }}>₪{pkg.credits.toLocaleString()}</div>
+              <div className="muted" style={{ fontSize: 13 }}>+ בונוס ₪{pkg.bonus} 🎁</div>
+              <div style={{ fontSize: 14, margin: '10px 0', color: 'var(--fg-muted)' }}>לתשלום: ₪{pkg.price.toLocaleString()}</div>
+              {payUrl ? (
+                <a href={payUrl} className="btn" style={{ display: 'block', textAlign: 'center', width: '100%', textDecoration: 'none' }}>
+                  טעינה — ₪{pkg.price.toLocaleString()}
                 </a>
               ) : (
-                <div className="btn secondary" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-                  בקרוב
-                </div>
+                <div className="btn secondary" style={{ opacity: 0.5, cursor: 'not-allowed', textAlign: 'center' }}>בקרוב</div>
               )}
             </div>
-          ))}
-        </div>
-        <div className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 12 }}>
-          התשלום מאובטח דרך Grow 🔒 — כרטיס אשראי, bit, Apple Pay, Google Pay
-        </div>
+          );
+        })}
       </div>
 
-      {/* Transaction history */}
-      <div className="card" style={{ marginTop: 24 }}>
-        <h3>היסטוריית תנועות</h3>
+      <div className="card" style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <span style={{ fontSize: 20 }}>ℹ️</span>
+          <h3 style={{ margin: 0 }}>איך זה עובד?</h3>
+        </div>
+        <ol className="muted" style={{ fontSize: 13.5, lineHeight: 1.8, paddingInlineStart: 20, margin: 0 }}>
+          <li>בוחרים חבילת קרדיטים ומשלמים בכרטיס אשראי (סליקה מאובטחת של Grow)</li>
+          <li>הקרדיטים נטענים אוטומטית לארנק תוך דקות</li>
+          <li>משתמשים בקרדיטים לתשלום על דוחות, מנויי שידור ושירותים נוספים</li>
+        </ol>
+      </div>
+
+      <div className="card" style={{ marginTop: 16 }}>
+        <h3>📋 פירוט תנועות</h3>
         {!txns?.length && <div className="empty">אין תנועות עדיין</div>}
         {txns?.length > 0 && (
           <div className="table-wrap">
             <table className="data">
               <thead>
-                <tr><th>תיאור</th><th>סכום</th><th>תאריך</th></tr>
+                <tr><th>פירוט</th><th>סכום</th><th>תאריך</th></tr>
               </thead>
               <tbody>
                 {txns.map((t) => (
                   <tr key={t.id}>
                     <td>{t.reason}</td>
-                    <td style={{
-                      color: t.amount >= 0 ? 'var(--success)' : 'var(--danger)',
-                      fontWeight: 700,
-                      whiteSpace: 'nowrap',
-                      fontFamily: "'JetBrains Mono', monospace",
-                    }}>
-                      {t.amount >= 0 ? '+' : ''}₪{Number(t.amount).toLocaleString()}
+                    <td style={{ color: t.amount >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {t.amount >= 0 ? '+' : ''}₪{Math.abs(Number(t.amount)).toLocaleString()}
                     </td>
-                    <td className="muted" style={{ whiteSpace: 'nowrap' }}>
-                      {new Date(t.created_at).toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </td>
+                    <td className="muted" style={{ whiteSpace: 'nowrap' }}>{new Date(t.created_at).toLocaleDateString('he-IL')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -130,15 +115,8 @@ export default async function WalletPage() {
         )}
       </div>
 
-      {/* Info card */}
-      <div className="card" style={{ background: 'var(--surface-lowest)', border: '1px solid var(--border)', marginTop: 16 }}>
-        <h4 style={{ marginBottom: 8, fontSize: 13 }}>💡 איך זה עובד?</h4>
-        <div className="muted" style={{ fontSize: 12, lineHeight: 1.7 }}>
-          <strong>1.</strong> בחר חבילת קרדיטים וטען את הארנק 💳<br />
-          <strong>2.</strong> הקרדיטים מתעדכנים אוטומטית תוך דקה ⚡<br />
-          <strong>3.</strong> בהזמנת דוח — סמן "שלם מקרדיטים" ושלם מיידית ✅<br />
-          <strong>4.</strong> ככל שהחבילה גדולה יותר, הבונוס גדל! 🎁<br />
-        </div>
+      <div style={{ textAlign: 'center', marginTop: 16 }}>
+        <Link href="/reports" style={{ color: 'var(--accent)' }}>→ לדוחות ותשלומים</Link>
       </div>
     </Shell>
   );
