@@ -1,6 +1,7 @@
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
 import DateTimePicker from '../../../components/DateTimePicker';
+import MeetingsTable from '../../../components/MeetingsTable';
 import { requireUser } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -191,7 +192,7 @@ export default async function CalendarPage() {
   const supabase = await requireAdmin();
 
   const [{ data: meetings }, { data: clients }] = await Promise.all([
-    supabase.from('meetings').select('*, profiles(full_name)').order('scheduled_at', { ascending: true }),
+    supabase.from('meetings').select('*, profiles(full_name, phone)').order('scheduled_at', { ascending: true }),
     supabase.from('profiles').select('id, full_name, phone, role').eq('role', 'client').order('full_name'),
   ]);
 
@@ -210,41 +211,19 @@ export default async function CalendarPage() {
         <div className="admin-col-right">
           <div className="card">
             <h3>כל הפגישות</h3>
-            {!meetings?.length && <div className="empty">אין פגישות</div>}
-            {meetings?.length > 0 && (
-              <div className="table-wrap">
-                <table className="data">
-                  <thead><tr><th>נושא</th><th>לקוח</th><th>טלפון</th><th>תאריך</th><th>שעה</th><th>סוג</th><th>הערות</th><th>סטטוס</th><th></th></tr></thead>
-                  <tbody>
-                    {meetings.map((m) => {
-                      const d = new Date(m.scheduled_at);
-                      const isPast = d < new Date();
-                      const typeConf = MEETING_TYPES.find((t) => t.value === m.location);
-                      return (
-                        <tr key={m.id} style={{ opacity: isPast ? 0.5 : 1 }}>
-                          <td style={{ fontWeight: 600 }}>{m.title}</td>
-                          <td>{m.profiles?.full_name || m.client_name || '—'}</td>
-                          <td dir="ltr" style={{ fontSize: 12 }}>{m.client_phone || '—'}</td>
-                          <td>{d.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: TZ })}</td>
-                          <td style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: 'var(--primary)' }}>
-                            {d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: TZ })}
-                          </td>
-                          <td>{typeConf ? `${typeConf.emoji} ${typeConf.value}` : (m.location || '—')}</td>
-                          <td className="muted" style={{ fontSize: 12, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.notes || '—'}</td>
-                          <td><span className={`badge ${isPast ? 'done' : 'in_progress'}`}>{isPast ? 'עבר' : 'מתוכנן'}</span></td>
-                          <td>
-                            <form action={deleteMeeting}>
-                              <input type="hidden" name="id" value={m.id} />
-                              <DeleteButton title="מחיקה" />
-                            </form>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <MeetingsTable
+              deleteAction={deleteMeeting}
+              meetingTypes={MEETING_TYPES.map((t) => ({ value: t.value, emoji: t.emoji }))}
+              meetings={(meetings || []).map((m) => ({
+                id: m.id,
+                title: m.title,
+                name: m.profiles?.full_name || m.client_name || '',
+                phone: m.client_phone || m.profiles?.phone || '',
+                scheduled_at: m.scheduled_at,
+                location: m.location,
+                notes: m.notes,
+              }))}
+            />
           </div>
         </div>
 
