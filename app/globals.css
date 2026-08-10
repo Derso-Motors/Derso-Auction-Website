@@ -901,7 +901,7 @@ label { display: block; font-size: 11.5px; font-weight: 600; margin-bottom: 5px;
 
 /* ============ GLOBAL PAGE ANIMATIONS ============ */
 @keyframes page-rise {
-  from { opacity: 0; transform: translateY(18px); }
+  from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .page-title { animation: page-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
@@ -928,7 +928,7 @@ table.data tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
 }
 
 /* Entrance animation for every page — all direct children of .main rise in, staggered */
-.main-anim > * { animation: page-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.main-anim > * { animation: page-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .main-anim > *:nth-child(1) { animation-delay: 0s; }
 .main-anim > *:nth-child(2) { animation-delay: 0.06s; }
 .main-anim > *:nth-child(3) { animation-delay: 0.12s; }
@@ -956,4 +956,16 @@ table.data tbody tr:nth-child(5) { animation-delay: 0.16s; }
 table.data tbody tr:nth-child(n+6) { animation-delay: 0.2s; }
 @media (prefers-reduced-motion: reduce) {
   .main-anim > *, .card.stat, table.data tbody tr { animation: none; }
+}
+
+
+/* Pricing-style stagger for cards inside grids — everywhere, admin included */
+.main-anim .grid > .card { animation: page-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.main-anim .grid > .card:nth-child(1) { animation-delay: 0.1s; }
+.main-anim .grid > .card:nth-child(2) { animation-delay: 0.25s; }
+.main-anim .grid > .card:nth-child(3) { animation-delay: 0.4s; }
+.main-anim .grid > .card:nth-child(4) { animation-delay: 0.55s; }
+.main-anim .grid > .card:nth-child(n+5) { animation-delay: 0.7s; }
+@media (prefers-reduced-motion: reduce) {
+  .main-anim .grid > .card { animation: none; }
 }
