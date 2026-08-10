@@ -10,7 +10,7 @@ import { sendWhatsApp } from '../../../lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
 
-const STAGES = ['זכייה במכרז', 'תשלום למכרז', 'שחרור הרכב', 'העברת בעלות', 'שינוע הרכב', 'מסירה ללקוח'];
+import { STAGES } from '../../../lib/stages';
 
 const P = '/admin/cars';
 
@@ -90,6 +90,15 @@ async function postUpdate(formData) {
     body: formData.get('body'),
   });
   if (error) redirect(P + '?err=' + encodeURIComponent('פרסום העדכון נכשל'));
+
+  // Notify the client on WhatsApp about every update, not just stage completions
+  const { data: car } = await supabase.from('cars').select('title, client_phone, profiles(full_name, phone)').eq('id', formData.get('car_id')).single();
+  const phone = car?.profiles?.phone || car?.client_phone;
+  if (phone && String(formData.get('body') || '').trim()) {
+    const msg = `שלום ${car?.profiles?.full_name || ''},\nעדכון לגבי הרכב ${car?.title}:\n📝 ${String(formData.get('body')).trim()}\n\nדרסו — בית ליווי מקצועי למכרזים`;
+    await sendWhatsApp(phone, msg);
+  }
+
   revalidatePath(P);
   redirect(P + '?ok=' + encodeURIComponent('העדכון פורסם ✓'));
 }

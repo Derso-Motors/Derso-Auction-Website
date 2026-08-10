@@ -192,7 +192,7 @@ export async function POST(req) {
 
 /* ── Client service mode ───────────────────────────────── */
 
-const STAGES = ['זכייה במכרז', 'תשלום למכרז', 'שחרור הרכב', 'העברת בעלות', 'שינוע הרכב', 'מסירה ללקוח'];
+import { STAGES } from '../../../../lib/stages';
 const PRICES =
   'המחירון שלנו:\n' +
   '• בדיקת "טופס סליקה" — 350 ₪\n' +

@@ -10,7 +10,7 @@ import { timeAgo } from '../lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-const STAGES = ['זכייה במכרז', 'תשלום למכרז', 'שחרור הרכב', 'העברת בעלות', 'שינוע הרכב', 'מסירה ללקוח'];
+import { STAGES } from '../lib/stages';
 
 function formatDate(dateStr) {
   const d = new Date(dateStr);

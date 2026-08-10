@@ -5,7 +5,7 @@ import CarLive from './live';
 
 export const dynamic = 'force-dynamic';
 
-const STAGES = ['זכייה במכרז', 'תשלום למכרז', 'שחרור הרכב', 'העברת בעלות', 'שינוע הרכב', 'מסירה ללקוח'];
+import { STAGES } from '../../../lib/stages';
 
 export default async function CarPage({ params }) {
   const { supabase, user } = await requireUser();
