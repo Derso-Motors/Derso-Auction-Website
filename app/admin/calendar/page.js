@@ -114,7 +114,7 @@ async function addMeeting(formData) {
     redirect('/admin/calendar?err=' + encodeURIComponent('השעה הזו כבר תפוסה — בחר שעה אחרת'));
   }
 
-  const { error } = await supabase.from('meetings').insert({
+  const { data: meeting, error } = await supabase.from('meetings').insert({
     client_id: isWalkIn ? null : clientId,
     title,
     scheduled_at: scheduledAt.toISOString(),
@@ -122,8 +122,29 @@ async function addMeeting(formData) {
     client_name: clientName,
     client_phone: clientPhone,
     notes,
-  });
+  }).select('id').single();
   if (error) redirect('/admin/calendar?err=' + encodeURIComponent('שגיאה בקביעת הפגישה'));
+
+  // Sync to Google Calendar via Apps Script (same flow as book-call)
+  const appsUrl = process.env.APPS_SCRIPT_URL;
+  if (appsUrl && meeting?.id) {
+    try {
+      const res = await fetch(appsUrl, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'createMeeting',
+          title: `${typeConfig.emoji} ${title}${clientName ? ` — ${clientName}` : ''}`,
+          startISO: scheduledAt.toISOString(),
+          durationMin: 15,
+          notes: [meetingType, clientPhone ? `טלפון: ${clientPhone}` : '', notes || ''].filter(Boolean).join('\n'),
+        }),
+      });
+      const j = await res.json().catch(() => null);
+      if (j?.eventId) {
+        await supabase.from('meetings').update({ gcal_event_id: j.eventId }).eq('id', meeting.id);
+      }
+    } catch {}
+  }
 
   let phone = clientPhone;
   let name = clientName;
@@ -147,8 +168,19 @@ async function addMeeting(formData) {
 async function deleteMeeting(formData) {
   'use server';
   const supabase = await requireAdmin();
-  const { error } = await supabase.from('meetings').delete().eq('id', formData.get('id'));
+  const id = formData.get('id');
+  const { data: m } = await supabase.from('meetings').select('gcal_event_id').eq('id', id).single();
+  const { error } = await supabase.from('meetings').delete().eq('id', id);
   if (error) redirect('/admin/calendar?err=' + encodeURIComponent('שגיאה במחיקת הפגישה'));
+  // Remove the synced Google Calendar event too
+  if (m?.gcal_event_id && process.env.APPS_SCRIPT_URL) {
+    try {
+      await fetch(process.env.APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'deleteMeeting', eventId: m.gcal_event_id }),
+      });
+    } catch {}
+  }
   revalidatePath('/admin/calendar');
   redirect('/admin/calendar?ok=' + encodeURIComponent('הפגישה נמחקה ✓'));
 }
