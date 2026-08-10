@@ -160,29 +160,39 @@ export default function PricingClient({ packages }) {
           font-size: 12px;
         }
         .pr-check.big { width: 28px; height: 28px; font-size: 15px; }
-        .pr-cta {
+        :global(.pr-cta) {
           display: block;
           text-align: center;
-          padding: 13px 24px;
-          border-radius: var(--radius);
+          padding: 14px 28px;
+          border-radius: 999px;
           border: 1.5px solid var(--accent);
           color: var(--accent);
-          background: transparent;
-          font-size: 14px;
-          font-weight: 600;
+          background: rgba(186, 199, 227, 0.06);
+          font-size: 14.5px;
+          font-weight: 700;
+          letter-spacing: 0.01em;
           text-decoration: none;
           transition: all 0.2s;
           margin-top: auto;
+          cursor: pointer;
         }
-        .pr-cta:hover { background: var(--primary-container); transform: scale(1.02); }
-        .pr-cta:active { transform: scale(0.97); }
-        .pr-cta.primary {
-          background: var(--accent);
-          border-color: var(--accent);
+        :global(.pr-cta:hover) {
+          background: var(--primary-container);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+        }
+        :global(.pr-cta:active) { transform: scale(0.97); }
+        :global(.pr-cta.primary) {
+          background: linear-gradient(135deg, var(--accent), #8fa3cf);
+          border-color: transparent;
           color: var(--on-primary);
-          box-shadow: 0 4px 14px rgba(186, 199, 227, 0.25);
+          box-shadow: 0 6px 18px rgba(186, 199, 227, 0.35);
         }
-        .pr-cta.primary:hover { filter: brightness(1.1); }
+        :global(.pr-cta.primary:hover) {
+          filter: brightness(1.12);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 26px rgba(186, 199, 227, 0.45);
+        }
 
         .pr-guarantee {
           margin-top: 28px;

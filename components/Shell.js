@@ -74,6 +74,12 @@ export default async function Shell({ children, active }) {
         </div>
         <div className="topbar-brand">דרסו · אזור אישי</div>
         <div className="topbar-left">
+          {!isAdmin && (
+            <Link href="/wallet" className="credits-chip" title="יתרת הקרדיטים שלך — לחץ לטעינה">
+              <span className="credits-chip-icon">💳</span>
+              <span className="credits-chip-amount">₪{Number(profile?.credits || 0).toLocaleString()}</span>
+            </Link>
+          )}
           <ShellClient type="settings" />
           <ShellClient type="bell" />
           <Link href="/settings" className="topbar-avatar" title={profile?.full_name || user.email}>
