@@ -17,6 +17,8 @@ export default function RecommendedClient({ initialCars, inspectionBalance = 0 }
   const [toast, setToast] = useState(null);
   const [busyCar, setBusyCar] = useState(null);
   const [modalCar, setModalCar] = useState(null);
+  const [step, setStep] = useState('price'); // 'price' | 'inspect'
+  const [maxBid, setMaxBid] = useState('');
   const [balance, setBalance] = useState(inspectionBalance);
   const [noBalance, setNoBalance] = useState(false);
   const [working, setWorking] = useState(false);
@@ -44,7 +46,8 @@ export default function RecommendedClient({ initialCars, inspectionBalance = 0 }
 
   async function bookAuction(car) {
     const supabase = createClient();
-    const { data, error } = await supabase.rpc('request_auction_meeting', { p_car_id: car.id });
+    const bid = Number(String(maxBid).replace(/[^\d]/g, '')) || null;
+    const { data, error } = await supabase.rpc('request_auction_meeting', { p_car_id: car.id, p_max_bid: bid });
     if (error || !data?.ok) {
       if (data?.error === 'already_requested') {
         showToast('כבר ביקשת מכרז על הרכב הזה — הוא בפגישות שלך.', false);
@@ -103,9 +106,35 @@ export default function RecommendedClient({ initialCars, inspectionBalance = 0 }
       {modalCar && (
         <div className="insp-overlay" onClick={() => !working && (setModalCar(null), setNoBalance(false))}>
           <div className="insp-box" onClick={(e) => e.stopPropagation()}>
-            {!noBalance ? (
+            {!noBalance && step === 'price' ? (
               <>
-                <div className="insp-title">🚗 רגע לפני שקובעים מכרז על</div>
+                <div className="insp-title">🚗 קובעים מכרז על</div>
+                <div className="insp-car">{modalCar.title}</div>
+                <div className="insp-sub">
+                  💰 <b style={{ color: 'var(--text)' }}>מה המחיר המקסימלי שאתה מוכן להגיש על הרכב הזה?</b>
+                  {modalCar.est_price != null && <> (מחיר מוערך: ₪{Number(modalCar.est_price).toLocaleString()})</>}
+                </div>
+                <input
+                  className="insp-bid"
+                  dir="ltr"
+                  inputMode="numeric"
+                  placeholder="למשל: 90,000"
+                  value={maxBid}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^\d]/g, '');
+                    setMaxBid(digits ? Number(digits).toLocaleString() : '');
+                  }}
+                />
+                <button type="button" className="insp-next" disabled={!maxBid} onClick={() => setStep('inspect')}>
+                  המשך ←
+                </button>
+                <button type="button" className="insp-skip" onClick={() => { setMaxBid(''); setStep('inspect'); }}>
+                  עוד לא החלטתי — דלג
+                </button>
+              </>
+            ) : !noBalance ? (
+              <>
+                <div className="insp-title">🛡️ רגע לפני שסוגרים — בדיקה?</div>
                 <div className="insp-car">{modalCar.title}</div>
                 <div className="insp-sub">
                   רכב מכרז בלי בדיקה = הימור. 9 מתוך 10 לקוחות שלנו בודקים לפני.
@@ -178,7 +207,7 @@ export default function RecommendedClient({ initialCars, inspectionBalance = 0 }
                   className="btn success"
                   type="button"
                   disabled={busyCar === car.id}
-                  onClick={() => setModalCar(car)}>
+                  onClick={() => { setModalCar(car); setStep('price'); setMaxBid(''); setNoBalance(false); }}>
                   {busyCar === car.id ? '⏳ שולח...' : '📅 מעניין — קבעו מכרז'}
                 </button>
               ) : (
@@ -257,6 +286,47 @@ export default function RecommendedClient({ initialCars, inspectionBalance = 0 }
           font-size: 16px; cursor: pointer; padding: 6px;
         }
         .insp-close:hover { color: var(--text); }
+        .insp-bid {
+          width: 100%;
+          background: var(--surface-low);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 14px 16px;
+          font-size: 22px;
+          font-weight: 700;
+          color: var(--text);
+          text-align: center;
+          margin-bottom: 12px;
+          font-family: inherit;
+        }
+        .insp-bid:focus { outline: none; border-color: var(--accent); }
+        .insp-next {
+          width: 100%;
+          background: var(--accent);
+          color: var(--on-primary);
+          border: none;
+          border-radius: 999px;
+          padding: 13px;
+          font-size: 15px;
+          font-weight: 700;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.15s;
+        }
+        .insp-next:hover:not(:disabled) { filter: brightness(1.1); }
+        .insp-next:disabled { opacity: 0.45; cursor: not-allowed; }
+        .insp-skip {
+          width: 100%;
+          background: none;
+          border: none;
+          color: var(--muted-dim);
+          font-size: 12.5px;
+          margin-top: 10px;
+          cursor: pointer;
+          font-family: inherit;
+          text-decoration: underline;
+        }
+        .insp-skip:hover { color: var(--text); }
       `}</style>
     </>
   );

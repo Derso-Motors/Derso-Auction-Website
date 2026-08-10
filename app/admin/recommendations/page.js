@@ -82,7 +82,7 @@ export default async function RecommendationsPage() {
   const supabase = await requireAdmin();
 
   const [{ data: lists }, { data: clients }] = await Promise.all([
-    supabase.from('recommendation_lists').select('*, profiles(full_name), recommended_cars(id, title, client_interest)').order('created_at', { ascending: false }),
+    supabase.from('recommendation_lists').select('*, profiles(full_name), recommended_cars(id, title, client_interest, client_max_bid)').order('created_at', { ascending: false }),
     supabase.from('profiles').select('id, full_name, role').eq('role', 'client').order('full_name'),
   ]);
 
@@ -106,6 +106,11 @@ export default async function RecommendationsPage() {
                     <div className="muted">
                       {(l.recommended_cars || []).length} רכבים ·
                       {' '}{(l.recommended_cars || []).filter((rc) => rc.client_interest === 'interested').length} מסומנים כמעניינים
+                      {(l.recommended_cars || []).filter((rc) => rc.client_max_bid).map((rc) => (
+                        <span key={rc.id} style={{ display: 'inline-block', marginInlineStart: 8, background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 999, padding: '1px 10px', fontSize: 11.5, fontWeight: 700 }}>
+                          💰 {rc.title}: מקס' ₪{Number(rc.client_max_bid).toLocaleString()}
+                        </span>
+                      ))}
                     </div>
                   </div>
                   <div className="row" style={{ gap: 8, flexShrink: 0 }}>
