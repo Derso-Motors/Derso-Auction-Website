@@ -1,7 +1,6 @@
 {
   "framework": "nextjs",
   "crons": [
-    { "path": "/api/broadcast/tick", "schedule": "0 6 * * *" },
-    { "path": "/api/call/reminders", "schedule": "*/10 3-16 * * 0-4" }
+    { "path": "/api/broadcast/tick", "schedule": "0 6 * * *" }
   ]
 }
