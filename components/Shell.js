@@ -89,6 +89,7 @@ export default async function Shell({ children, active }) {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 {ICONS[it.icon]}
               </svg>
+              <span className="icon-sidebar-text">{it.label}</span>
             </Link>
           ))}
         </div>

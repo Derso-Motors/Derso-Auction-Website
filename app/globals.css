@@ -106,7 +106,7 @@ a { color: inherit; text-decoration: none; }
 }
 .topbar-avatar:hover { border-color: var(--primary); }
 
-/* Icon Sidebar */
+/* Icon Sidebar — expands on hover (desktop) */
 .icon-sidebar {
   grid-area: sidebar;
   background: var(--surface-low);
@@ -117,27 +117,33 @@ a { color: inherit; text-decoration: none; }
 }
 .icon-sidebar-nav {
   display: flex; flex-direction: column; gap: 4px; flex: 1;
-  align-items: center; width: 100%; overflow-y: auto;
+  align-items: center; width: 100%; overflow-y: auto; overflow-x: hidden;
 }
 .icon-sidebar-item {
   width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius); color: var(--muted-dim); cursor: pointer;
   background: none; border: none; transition: all 0.15s; position: relative;
-  font-family: inherit;
+  font-family: inherit; flex-shrink: 0;
 }
+.icon-sidebar-item svg { flex-shrink: 0; }
 .icon-sidebar-item:hover { color: var(--text); background: var(--surface-high); }
 .icon-sidebar-item.active {
   color: var(--primary); background: var(--primary-container);
   box-shadow: inset -3px 0 0 var(--primary);
 }
-.icon-sidebar-item .icon-sidebar-label {
-  display: none; position: absolute; left: calc(100% + 8px);
-  background: var(--surface-high); color: var(--text); padding: 4px 10px;
-  border-radius: var(--radius); font-size: 12px; font-weight: 600;
-  white-space: nowrap; border: 1px solid var(--border); z-index: 20;
-  pointer-events: none;
+.icon-sidebar-text {
+  display: none; font-size: 13px; font-weight: 600; white-space: nowrap;
+  opacity: 0; transition: opacity 0.2s 0.05s;
 }
-.icon-sidebar-item:hover .icon-sidebar-label { display: block; }
+@media (min-width: 901px) {
+  .shell { transition: grid-template-columns 0.25s ease; }
+  .shell:has(.icon-sidebar:hover) { --sidebar-w: 200px; }
+  .icon-sidebar { transition: width 0.25s ease; overflow: hidden; }
+  .icon-sidebar:hover .icon-sidebar-item {
+    width: calc(100% - 16px); justify-content: flex-start; gap: 12px; padding: 0 12px;
+  }
+  .icon-sidebar:hover .icon-sidebar-text { display: inline; opacity: 1; }
+}
 .icon-sidebar-bottom {
   display: flex; flex-direction: column; gap: 4px; align-items: center;
   border-top: 1px solid var(--border); padding-top: 12px; width: 100%;
@@ -149,6 +155,8 @@ a { color: inherit; text-decoration: none; }
   padding: 32px 40px;
   max-width: 1200px;
   min-width: 0;
+  width: 100%;
+  margin: 0 auto;
 }
 
 /* Footer */
