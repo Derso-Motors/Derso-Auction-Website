@@ -82,6 +82,24 @@ async function addMeeting(formData) {
   }
   const meetingType = formData.get('meeting_type') || 'שיחה טלפונית';
   const typeConfig = MEETING_TYPES.find((t) => t.value === meetingType) || MEETING_TYPES[MEETING_TYPES.length - 1];
+
+  // Business-hours rules (Israel time): Sun-Thu until 18:00; Friday phone calls only, 10:00-14:00
+  const il = new Date(scheduledAt.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  const ilHour = il.getHours() + il.getMinutes() / 60;
+  const ilDow = il.getDay();
+  if (ilDow === 6) {
+    redirect('/admin/calendar?err=' + encodeURIComponent('אין קביעת פגישות בשבת'));
+  }
+  if (ilDow === 5) {
+    if (typeConfig.location !== 'טלפון') {
+      redirect('/admin/calendar?err=' + encodeURIComponent('ביום שישי אפשר לקבוע שיחות טלפון בלבד'));
+    }
+    if (ilHour < 10 || ilHour >= 14) {
+      redirect('/admin/calendar?err=' + encodeURIComponent('ביום שישי קובעים שיחות בין 10:00 ל-14:00 בלבד'));
+    }
+  } else if (ilHour < 7 || ilHour >= 18) {
+    redirect('/admin/calendar?err=' + encodeURIComponent('קביעת פגישות אפשרית עד 18:00 בלבד'));
+  }
   const clientName = isWalkIn ? (formData.get('client_name') || 'לקוח חד-פעמי') : null;
   const clientPhone = isWalkIn ? (formData.get('client_phone') || null) : null;
   const notes = formData.get('notes') || null;

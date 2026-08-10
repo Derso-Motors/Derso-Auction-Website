@@ -123,8 +123,13 @@ export default function DateTimePicker({ name, required, includeTime = false, de
     }
   }
 
+  // Business hours: Sun-Thu until 18:00; Friday phone-calls only 10:00-14:00.
+  const selDow = selectedDate ? new Date(`${selectedDate}T12:00:00`).getDay() : null;
+  const isFriday = selDow === 5;
+  const startHour = isFriday ? 10 : 7;
+  const endHour = isFriday ? 14 : 18; // exclusive — last slot 13:45 / 17:45
   const hours = [];
-  for (let h = 7; h <= 21; h++) {
+  for (let h = startHour; h < endHour; h++) {
     for (let m = 0; m < 60; m += 15) {
       hours.push({ h, m, label: `${pad(h)}:${pad(m)}` });
     }
@@ -201,6 +206,11 @@ export default function DateTimePicker({ name, required, includeTime = false, de
             <span className="dtp-title">בחר שעה</span>
             <span />
           </div>
+          {isFriday && (
+            <div style={{ textAlign: 'center', padding: '0 12px 6px', fontSize: 11, color: '#63b3ed' }}>
+              יום שישי — שיחות טלפון בלבד, 10:00–14:00 📞
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '0 12px 8px', fontSize: 11 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: 'rgba(99,179,237,0.13)', border: '1px solid rgba(99,179,237,0.3)', display: 'inline-block' }} />
