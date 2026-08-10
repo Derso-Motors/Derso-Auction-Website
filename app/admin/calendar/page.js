@@ -75,7 +75,11 @@ async function addMeeting(formData) {
   const clientId = formData.get('client_id');
   const isWalkIn = clientId === '__walk_in__';
   const title = formData.get('title');
-  const scheduledAt = new Date(formData.get('scheduled_at'));
+  const raw = formData.get('scheduled_at');
+  const scheduledAt = raw ? new Date(raw) : new Date(NaN);
+  if (isNaN(scheduledAt.getTime())) {
+    redirect('/admin/calendar?err=' + encodeURIComponent('לא נבחרו תאריך ושעה — בחר מועד ונסה שוב'));
+  }
   const meetingType = formData.get('meeting_type') || 'שיחה טלפונית';
   const typeConfig = MEETING_TYPES.find((t) => t.value === meetingType) || MEETING_TYPES[MEETING_TYPES.length - 1];
   const clientName = isWalkIn ? (formData.get('client_name') || 'לקוח חד-פעמי') : null;
