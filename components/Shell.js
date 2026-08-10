@@ -8,6 +8,7 @@ import AutoRefresh from './AutoRefresh';
 import LogoutButton from './LogoutButton';
 import GuidedTour from './GuidedTour';
 import SidebarTips from './SidebarTips';
+import MainAnimator from './MainAnimator';
 
 const ICONS = {
   home: <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></>,
@@ -112,7 +113,7 @@ export default async function Shell({ children, active }) {
             <Link href="/verify-phone" className="btn" style={{ padding: '6px 14px', fontSize: 13 }}>לאימות בוואטסאפ ←</Link>
           </div>
         )}
-        {children}
+        <MainAnimator>{children}</MainAnimator>
       </main>
 
       {(isAdmin || profile?.ai_assistant_active) && <AssistantWidget isAdmin={isAdmin} />}
