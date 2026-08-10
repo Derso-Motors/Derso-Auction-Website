@@ -146,9 +146,9 @@ async function addMeeting(formData) {
   }).select('id').single();
   if (error) redirect('/admin/calendar?err=' + encodeURIComponent('שגיאה בקביעת הפגישה'));
 
-  // הסנכרון ליומן החדש (derso.motors) נעשה ע"י הבוט דרך /api/nadav/cal-outbox
-  // (gcal_event_id נשאר null עד שהבוט יוצר את האירוע). לא משתמשים ב-Apps Script —
-  // הוא הצביע ליומן הישן וגרם לפגישות "להיעלם".
+  // הסנכרון ליומן החדש (derso.motors) נעשה בענן: Supabase Edge Function 'gcal-sync'
+  // + pg_cron כל דקה קורא את הפגישות ויוצר אותן ב-Google Calendar (gcal_event_id
+  // נשאר null עד שהענן מסנכרן). לא Apps Script (הצביע ליומן הישן) ולא הבוט.
 
   let phone = clientPhone;
   let name = clientName;
