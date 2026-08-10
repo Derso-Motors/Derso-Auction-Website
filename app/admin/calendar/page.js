@@ -3,6 +3,7 @@ import Shell from '../../../components/Shell';
 import DateTimePicker from '../../../components/DateTimePicker';
 import MeetingsTable from '../../../components/MeetingsTable';
 import { requireUser } from '../../../lib/supabase-server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { sendWhatsApp } from '../../../lib/whatsapp';
@@ -64,10 +65,22 @@ const MEETING_TYPES = [
 ];
 
 async function requireAdmin() {
-  const { supabase, user } = await requireUser();
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') redirect('/');
-  return supabase;
+  const { supabase, user } = await requireUser(); // מאמת זהות (getUser)
+  // בדיקת התפקיד עם service-role — עמידה לתקלת auth-context של server actions
+  // ש"החזירה" את המנהל לדף הבית אחרי קביעת פגישה. אם אין service key — נופלים לחיבור הרגיל.
+  let role = null;
+  try {
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const svc = createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const { data } = await svc.from('profiles').select('role').eq('id', user.id).single();
+      role = data?.role ?? null;
+    } else {
+      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      role = data?.role ?? null;
+    }
+  } catch { role = null; }
+  if (role !== 'admin') redirect('/');
+  return supabase; // הפעולות על הנתונים ממשיכות עם חיבור המשתמש (RLS חל)
 }
 
 async function addMeeting(formData) {
