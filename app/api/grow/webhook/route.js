@@ -42,6 +42,30 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, msg: 'already processed' });
   }
 
+  // Case 0: Recurring subscriptions (הוראת קבע) — broadcast / AI assistant
+  if (custom2 === 'sub_broadcast' || custom2 === 'sub_ai') {
+    if (custom2 === 'sub_broadcast') {
+      await sb.from('broadcast_subscribers').upsert({
+        client_id: userId,
+        active: true,
+        monthly_fee: paymentSum,
+        paid_until: new Date(Date.now() + 32 * 24 * 3600 * 1000).toISOString(),
+      }, { onConflict: 'client_id' });
+    } else {
+      await sb.from('profiles').update({ ai_assistant_active: true }).eq('id', userId);
+    }
+    // marker row for idempotency + history
+    await sb.from('credit_transactions').insert({
+      client_id: userId,
+      amount: 0,
+      reason: custom2 === 'sub_broadcast'
+        ? `חיוב מנוי שידור (₪${paymentSum}) — הוראת קבע Grow`
+        : `חיוב עוזר אישי AI (₪${paymentSum}) — הוראת קבע Grow`,
+      grow_tx_code: txCode,
+    });
+    return NextResponse.json({ ok: true, type: custom2 });
+  }
+
   // Case 1: Report package purchase — create paid report orders (one per report)
   const reportPkg = REPORT_PACKAGES.find(p => p.key === custom2);
   if (reportPkg) {

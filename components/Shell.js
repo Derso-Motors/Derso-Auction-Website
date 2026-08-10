@@ -52,10 +52,10 @@ const CLIENT_NAV = [
   { href: '/', key: 'home', label: 'ראשי', icon: 'home' },
   { href: '/pricing', key: 'pricing', label: 'המחירונים שלנו', icon: 'pricing' },
   { href: '/wallet', key: 'wallet', label: 'ארנק', icon: 'wallet' },
+  { href: '/subscriptions', key: 'subscriptions', label: 'השידור שלי', icon: 'broadcast' },
   { href: '/recommended', key: 'recommended', label: 'רכבים בהמלצה', icon: 'recommendations' },
   { href: '/book-call', key: 'book-call', label: 'קביעת שיחת אפיון', icon: 'calendar' },
   { href: '/reports', key: 'reports', label: 'דוחות ותשלומים', icon: 'reports' },
-  { href: '/subscriptions', key: 'subscriptions', label: 'מנויים', icon: 'subscriptions' },
   { href: '/messages', key: 'messages', label: 'שאלות ופניות', icon: 'messages' },
 ];
 
