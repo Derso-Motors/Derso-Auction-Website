@@ -120,18 +120,22 @@ function NotificationBell() {
       setNotifications(data || []);
       setCount(data?.length || 0);
     }
-    load();
+    let cancelled = false;
+    let channel = null;
+    load().then(() => supabase.auth.getUser()).then(({ data: { user } }) => {
+      if (cancelled || !user) return;
+      // Scoped to this user's messages only — both via filter and handler guard
+      channel = supabase.channel('notif-bell')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `client_id=eq.${user.id}` }, (payload) => {
+          if (payload.new.sender_role === 'admin' && payload.new.client_id === user.id && !payload.new.read) {
+            setNotifications(prev => [payload.new, ...prev].slice(0, 10));
+            setCount(prev => prev + 1);
+          }
+        })
+        .subscribe();
+    });
 
-    const channel = supabase.channel('notif-bell')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-        if (payload.new.sender_role === 'admin') {
-          setNotifications(prev => [payload.new, ...prev].slice(0, 10));
-          setCount(prev => prev + 1);
-        }
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    return () => { cancelled = true; if (channel) supabase.removeChannel(channel); };
   }, []);
 
   const toggleOpen = async () => {

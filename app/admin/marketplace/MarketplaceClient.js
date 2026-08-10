@@ -99,7 +99,7 @@ export default function MarketplaceClient() {
   const [copied, setCopied] = useState({});
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState('');
-  const [aiDescription, setAiDescription] = useState('');
+  const [aiDescription, setAiDescription] = useState(null); // null = untouched (fallback to generated)
   const [describing, setDescribing] = useState(false);
   const [describeError, setDescribeError] = useState('');
   const descRef = useRef(null);
@@ -108,7 +108,7 @@ export default function MarketplaceClient() {
     const raw = rawText.trim();
     if (!raw) return;
     setParseError('');
-    setAiDescription('');
+    setAiDescription(null);
     setParsing(true);
 
     // If they pasted a Bidspirit lot LINK, pull the fields from the catalog API.
@@ -213,14 +213,14 @@ export default function MarketplaceClient() {
 
   function handleCopyAll() {
     if (!data) return;
-    const desc = aiDescription || generateFBDescription(data);
+    const desc = aiDescription ?? generateFBDescription(data);
     const all = `כותרת: ${data.title}\nשנתון: ${data.year}\nיצרן: ${data.make}\nדגם: ${data.model}\nמחיר: ${data.price}\n\n${desc}`;
     navigator.clipboard.writeText(all);
     setCopied((prev) => ({ ...prev, all: true }));
     setTimeout(() => setCopied((prev) => ({ ...prev, all: false })), 2000);
   }
 
-  const shownDescription = aiDescription || (data ? generateFBDescription(data) : '');
+  const shownDescription = aiDescription ?? (data ? generateFBDescription(data) : '');
 
   return (
     <>
@@ -248,7 +248,7 @@ export default function MarketplaceClient() {
               <button className="btn" onClick={handleParse} disabled={!rawText.trim() || parsing}>
                 {parsing ? 'מפענח...' : 'פענוח אוטומטי'}
               </button>
-              <button className="btn secondary" onClick={() => { setRawText(''); setData(null); setParseError(''); setAiDescription(''); setDescribeError(''); }}>
+              <button className="btn secondary" onClick={() => { setRawText(''); setData(null); setParseError(''); setAiDescription(null); setDescribeError(''); }}>
                 נקה
               </button>
             </div>

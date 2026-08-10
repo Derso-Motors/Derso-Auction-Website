@@ -218,7 +218,12 @@ function SendCarModal({ clients, initial, onClose, onSent }) {
     if (!form.client_id) { setError('בחר לקוח'); return; }
     if (!form.title.trim()) { setError('שם הרכב הוא שדה חובה'); return; }
     setSending(true); setError('');
-    const res = await sendCarToClient({ ...form, notify });
+    let res;
+    try {
+      res = await sendCarToClient({ ...form, notify });
+    } catch {
+      res = null; // network failure — don't leave the modal stuck on "שולח..."
+    }
     setSending(false);
     if (!res?.ok) { setError('השליחה נכשלה. נסה שוב.'); return; }
     onSent();

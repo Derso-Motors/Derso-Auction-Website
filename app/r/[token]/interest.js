@@ -6,12 +6,18 @@ import { createClient } from '../../../lib/supabase-client';
 export default function InterestButtons({ token, carId, current }) {
   const [interest, setInterest] = useState(current);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   async function mark(value) {
     setSaving(true);
+    setSaveError('');
     const supabase = createClient();
-    await supabase.rpc('set_interest_by_token', { p_token: token, p_car_id: carId, p_interest: value });
-    setInterest(value);
+    const { error } = await supabase.rpc('set_interest_by_token', { p_token: token, p_car_id: carId, p_interest: value });
+    if (error) {
+      setSaveError('השמירה נכשלה — נסו שוב או פנו אלינו');
+    } else {
+      setInterest(value);
+    }
     setSaving(false);
   }
 
@@ -31,7 +37,8 @@ export default function InterestButtons({ token, carId, current }) {
       >
         לא רלוונטי
       </button>
-      {interest && <span className="muted">הבחירה נשמרה</span>}
+      {saveError ? <span style={{ color: '#f87171', fontSize: 13 }}>{saveError}</span>
+        : interest && <span className="muted">הבחירה נשמרה</span>}
     </div>
   );
 }

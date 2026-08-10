@@ -34,12 +34,17 @@ export default function VerifyPhonePage() {
   }, [cooldown]);
 
   async function api(payload) {
-    const res = await fetch('/api/verify-phone', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    return res.json().catch(() => ({ ok: false, error: 'שגיאת תקשורת — נסה שוב' }));
+    try {
+      const res = await fetch('/api/verify-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch {
+      // network drop / offline — never throw, so busy state always resets
+      return { ok: false, error: 'שגיאת תקשורת — נסה שוב' };
+    }
   }
 
   async function sendCode(e) {

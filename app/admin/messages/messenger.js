@@ -20,8 +20,23 @@ export default function Messenger({ conversations: initial }) {
       .channel('admin-messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const msg = payload.new;
-        setConversations((prev) =>
-          prev.map((c) => {
+        setConversations((prev) => {
+          // New client not in the list yet (registered after page load) — add them
+          if (!prev.some((c) => c.id === msg.client_id)) {
+            supabase.from('profiles').select('id, full_name, phone').eq('id', msg.client_id).single()
+              .then(({ data: p }) => {
+                if (!p) return;
+                setConversations((cur) => cur.some((c) => c.id === p.id) ? cur : [{
+                  ...p,
+                  messages: [msg],
+                  lastMessage: msg.body,
+                  lastAt: msg.created_at,
+                  unreadCount: msg.sender_role === 'client' ? 1 : 0,
+                }, ...cur]);
+              });
+            return prev;
+          }
+          return prev.map((c) => {
             if (c.id !== msg.client_id) return c;
             const exists = c.messages.some((m) => m.id === msg.id);
             return {
@@ -31,8 +46,8 @@ export default function Messenger({ conversations: initial }) {
               lastAt: msg.created_at,
               unreadCount: msg.sender_role === 'client' ? c.unreadCount + 1 : c.unreadCount,
             };
-          })
-        );
+          });
+        });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -47,23 +62,29 @@ export default function Messenger({ conversations: initial }) {
     const supabase = createClient();
     supabase.from('messages').update({ read: true })
       .eq('client_id', activeId).eq('sender_role', 'client').eq('read', false)
-      .then(() => {
+      .then(({ error }) => {
+        if (error) return; // keep the badge if the DB update failed
         setConversations((prev) =>
           prev.map((c) => c.id === activeId ? { ...c, unreadCount: 0 } : c)
         );
       });
-  }, [activeId]);
+  }, [activeId, active?.unreadCount]);
 
   async function send(e) {
     e.preventDefault();
     if (!body.trim() || !activeId) return;
     setSending(true);
     const supabase = createClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('messages')
       .insert({ client_id: activeId, sender_role: 'admin', body: body.trim() })
       .select()
       .single();
+    if (error || !data) {
+      setSending(false);
+      alert('שליחת ההודעה נכשלה — נסה שוב'); // keep the typed text
+      return;
+    }
     if (data) {
       setConversations((prev) =>
         prev.map((c) => {
