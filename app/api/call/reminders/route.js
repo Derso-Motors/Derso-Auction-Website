@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { processCallReminders, processMeetingAdminReminders } from '../../../../lib/callBookings';
+import { processCallReminders, processMeetingAdminReminders, syncMeetingsToGcal } from '../../../../lib/callBookings';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,5 +20,6 @@ export async function GET(req) {
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, key, { auth: { persistSession: false } });
   const result = await processCallReminders(supabase);
   const meetingReminders = await processMeetingAdminReminders(supabase);
-  return Response.json({ ok: true, ...result, meetingReminders });
+  const gcalSync = await syncMeetingsToGcal(supabase);
+  return Response.json({ ok: true, ...result, meetingReminders, gcalSync });
 }
