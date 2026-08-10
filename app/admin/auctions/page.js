@@ -52,8 +52,8 @@ async function addWinByLink(formData) {
     car_title: car.title + (car.km ? ` · ${Number(String(car.km).replace(/[^\d]/g, '')) ? Number(String(car.km).replace(/[^\d]/g, '')).toLocaleString() + ' ק"מ' : car.km}` : ''),
     auction_source: 'BidSpirit',
     case_number: car.license_plate || null,
-    max_bid: 0,
-    final_price: Number(formData.get('final_price')) || null,
+    max_bid: Number(formData.get('final_price')) || Number(String(car.list_price).replace(/[^\d]/g, '')) || 0,
+    final_price: Number(formData.get('final_price')) || Number(String(car.list_price).replace(/[^\d]/g, '')) || null,
     closing_date: auctionDate,
     status: 'won',
     auction_link: link,
@@ -210,7 +210,10 @@ export default async function AuctionsPage() {
                         )}
                       </td>
                       <td>{a.profiles?.full_name || '—'}</td>
-                      <td style={{ fontWeight: 600 }}>₪{Number(a.max_bid || 0).toLocaleString()}</td>
+                      <td style={{ fontWeight: 600 }}>
+                        ₪{Number((a.status === 'won' && a.final_price) ? a.final_price : (a.max_bid || 0)).toLocaleString()}
+                        {a.status === 'won' && a.final_price ? <div style={{ fontSize: 10.5, color: 'var(--success)' }}>מחיר זכייה</div> : null}
+                      </td>
                       <td className="muted">
                         {a.closing_date ? new Date(a.closing_date).toLocaleDateString('he-IL') : '—'}
                         {a.closing_date && (

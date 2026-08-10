@@ -2,7 +2,7 @@ import { createClient as createSupabase } from '@supabase/supabase-js';
 import Shell from '../../components/Shell';
 import { requireUser } from '../../lib/supabase-server';
 import { sendWhatsApp } from '../../lib/whatsapp';
-import { SLOT_TIMES, bookableDays, ilDateTimeToUtc, ilDayOfWeek, fmtIl } from '../../lib/callBookings';
+import { SLOT_TIMES, bookableDays, ilDateTimeToUtc, ilDayOfWeek, fmtIl, isLunchSlot } from '../../lib/callBookings';
 import BookCallClient from './BookCallClient';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -36,6 +36,9 @@ async function bookCall(formData) {
   const time = String(formData.get('time') || '');
   const P = '/book-call';
 
+  if (isLunchSlot(time)) {
+    redirect('/book-call?err=' + encodeURIComponent('השעות 13:15–14:45 סגורות (הפסקת צהריים) — בחרו שעה אחרת'));
+  }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !SLOT_TIMES.includes(time)) {
     redirect(P + '?err=' + encodeURIComponent('בחירת מועד לא תקינה — נסה שוב'));
   }
@@ -143,6 +146,12 @@ export default async function BookCallPage() {
     const { data: meetings } = await admin.from('meetings')
       .select('scheduled_at').gte('scheduled_at', rangeStart).lte('scheduled_at', rangeEnd);
     busy = busy.concat((meetings || []).map((m) => m.scheduled_at));
+  }
+  // Lunch break 13:15–14:45 — always shown as taken
+  for (const d of days) {
+    for (const t of SLOT_TIMES) {
+      if (isLunchSlot(t)) busy.push(ilDateTimeToUtc(d, t).toISOString());
+    }
   }
 
   const { data: mine } = await supabase.from('call_bookings')
