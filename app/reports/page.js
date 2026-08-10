@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { buildPaymentUrl } from '../../lib/grow';
+import ThankYouOverlay from '../../components/ThankYouOverlay';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,7 @@ export default async function ReportsPage({ searchParams }) {
       <div className="page-sub">מעקב הזמנות, תשלומים ויתרת קרדיטים</div>
 
       {searchParams?.err && <div className="error-msg">{searchParams.err}</div>}
-      {searchParams?.ok && !searchParams?.err && <div className="info-msg">{searchParams.ok}</div>}
+      {searchParams?.ok && !searchParams?.err && <ThankYouOverlay message={searchParams.ok} />}
 
       <div className="grid cols-2">
         <div className="card">

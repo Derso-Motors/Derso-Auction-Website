@@ -2,6 +2,7 @@ import Shell from '../../components/Shell';
 import { requireUser } from '../../lib/supabase-server';
 import { CREDIT_PACKAGES, growLinkWithParams } from '../../lib/grow';
 import PayPopup from '../../components/PayPopup';
+import ThankYouOverlay from '../../components/ThankYouOverlay';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,7 @@ export default async function WalletPage({ searchParams }) {
       <div className="page-title">💳 ארנק דרסו</div>
       <div className="page-sub">טעינת קרדיטים, היתרה שלך ופירוט תנועות</div>
 
-      {searchParams?.ok && <div className="info-msg">{searchParams.ok}</div>}
+      {searchParams?.ok && <ThankYouOverlay message={searchParams.ok} />}
       {searchParams?.err && <div className="error-msg">{searchParams.err}</div>}
 
       <div className="card" style={{ textAlign: 'center', padding: '32px 24px' }}>
