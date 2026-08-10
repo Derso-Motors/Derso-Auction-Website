@@ -123,10 +123,10 @@ export default function DateTimePicker({ name, required, includeTime = false, de
     }
   }
 
-  // Business hours: Sun-Thu until 17:00 (last slot 16:45); Friday phone-calls only 10:00-14:00.
+  // Business hours: Sun-Thu 09:00-17:00 (last slot 16:45); Friday phone-calls only 10:00-14:00.
   const selDow = selectedDate ? new Date(`${selectedDate}T12:00:00`).getDay() : null;
   const isFriday = selDow === 5;
-  const startHour = isFriday ? 10 : 7;
+  const startHour = isFriday ? 10 : 9;
   const endHour = isFriday ? 14 : 17; // exclusive — last slot 13:45 / 16:45
   const hours = [];
   for (let h = startHour; h < endHour; h++) {

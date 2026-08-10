@@ -113,8 +113,8 @@ async function addMeeting(formData) {
       redirect('/admin/calendar?err=' + encodeURIComponent('ביום שישי קובעים שיחות בין 10:00 ל-14:00 בלבד'));
     }
   } else {
-    if (ilHour < 7 || ilHour >= 17) {
-      redirect('/admin/calendar?err=' + encodeURIComponent('קביעת פגישות אפשרית עד 17:00 בלבד (פגישה אחרונה 16:45)'));
+    if (ilHour < 9 || ilHour >= 17) {
+      redirect('/admin/calendar?err=' + encodeURIComponent('קביעת פגישות אפשרית בין 09:00 ל-17:00 (פגישה אחרונה 16:45)'));
     }
     // Lunch break: 14:15–15:00 (not including 15:00)
     const ilMinutes = il.getHours() * 60 + il.getMinutes();
@@ -177,8 +177,8 @@ async function rescheduleMeeting(formData) {
   const when = String(formData.get('when') || ''); // "YYYY-MM-DDTHH:MM" Israel local
   const P = '/admin/calendar';
   const m = when.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/);
-  if (!id || !m) redirect(P + '?err=' + encodeURIComponent('מועד לא תקין'));
-  const newAt = ilDateTimeToUtc(m[1], m[2]);
+  const newAt = m ? ilDateTimeToUtc(m[1], m[2]) : new Date(when);
+  if (!id || isNaN(newAt.getTime())) redirect(P + '?err=' + encodeURIComponent('מועד לא תקין'));
 
   const { data: row } = await supabase.from('meetings')
     .select('gcal_event_id, title, client_name, client_phone, scheduled_at')

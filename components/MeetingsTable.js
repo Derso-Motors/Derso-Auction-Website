@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { DeleteButton } from './SubmitButton';
+import DateTimePicker from './DateTimePicker';
 
 const TZ = 'Asia/Jerusalem';
 
@@ -78,10 +79,9 @@ export default function MeetingsTable({ meetings = [], deleteAction, rescheduleA
                       </form>
                     </div>
                     {editing === m.id && rescheduleAction && (
-                      <form action={rescheduleAction} style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
+                      <form action={rescheduleAction} style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'flex-start' }}>
                         <input type="hidden" name="id" value={m.id} />
-                        <input name="when" type="datetime-local" defaultValue={m._dtLocal} required
-                          style={{ padding: '6px 8px', fontSize: 12.5, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-lowest)', color: 'var(--text)', fontFamily: 'inherit' }} />
+                        <DateTimePicker name="when" includeTime required defaultValue={m.scheduled_at} />
                         <button type="submit" className="btn small">שמור</button>
                       </form>
                     )}
