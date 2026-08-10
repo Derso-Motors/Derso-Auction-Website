@@ -59,10 +59,11 @@ async function advanceStage(formData) {
   if (carErr) redirect(P + '?err=' + encodeURIComponent('עדכון הרכב נכשל'));
 
   const { data: { user } } = await supabase.auth.getUser();
+  const authorId = user?.id ?? (await supabase.auth.getSession()).data.session?.user?.id ?? null;
   const { data: stage } = await supabase.from('car_stages').select('title').eq('car_id', carId).eq('step_number', step).single();
   const { error: updErr } = await supabase.from('car_updates').insert({
     car_id: carId,
-    author_id: user.id,
+    author_id: authorId,
     stage_number: step,
     body: note?.trim() ? note.trim() : `השלב "${stage?.title}" הושלם`,
   });
@@ -84,9 +85,10 @@ async function postUpdate(formData) {
   'use server';
   const supabase = await requireAdmin();
   const { data: { user } } = await supabase.auth.getUser();
+  const authorId = user?.id ?? (await supabase.auth.getSession()).data.session?.user?.id ?? null;
   const { error } = await supabase.from('car_updates').insert({
     car_id: formData.get('car_id'),
-    author_id: user.id,
+    author_id: authorId,
     body: formData.get('body'),
   });
   if (error) redirect(P + '?err=' + encodeURIComponent('פרסום העדכון נכשל'));

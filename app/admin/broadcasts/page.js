@@ -261,7 +261,7 @@ export default async function BroadcastsPage({ searchParams }) {
           </form>
           <form action={processNow}><SubmitButton className="btn secondary">🔄 עיבוד תור עכשיו</SubmitButton></form>
           <form action={togglePause}>
-            <SubmitButton className={settings?.paused ? 'btn' : 'btn danger-outline'} label={settings?.paused ? '▶️ הפעלת השידור' : '⏸️ השהיית כל השידור'} />
+            <SubmitButton className={settings?.paused ? 'btn' : 'btn danger-outline'}>{settings?.paused ? '▶️ הפעלת השידור' : '⏸️ השהיית כל השידור'}</SubmitButton>
           </form>
         </div>
       </div>
@@ -372,7 +372,7 @@ export default async function BroadcastsPage({ searchParams }) {
             <div className="row" style={{ gap: 6 }}>
               <form action={toggleSubscriber}>
                 <input type="hidden" name="id" value={s.id} />
-                <SubmitButton className="btn secondary small" label={s.active ? '⏸️ השבתה' : '▶️ הפעלה'} />
+                <SubmitButton className="btn secondary small">{s.active ? '⏸️ השבתה' : '▶️ הפעלה'}</SubmitButton>
               </form>
               <form action={removeSubscriber}>
                 <input type="hidden" name="id" value={s.id} />
