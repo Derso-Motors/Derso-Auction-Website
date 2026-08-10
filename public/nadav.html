@@ -105,13 +105,16 @@ const PH={idle:['#3b82f6','#22d3ee','6s','נדב מוכן'],draft:['#8b5cf6','#3
 let muted=false,lastTs=0,connected=false,lastOpenTs=0,firstRender=true;
 const $=id=>document.getElementById(id);
 
-$('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇 קול כבוי':'🔊 קול פעיל';};
+$('mute').onclick=()=>{unlockTTS();muted=!muted;$('mute').textContent=muted?'🔇 קול כבוי':'🔊 קול פעיל';if(!muted)speak('הקול פעיל');};
 // Hebrew TTS — getVoices() is async and empty on first call, so cache and re-scan
 // on voiceschanged; otherwise the browser reads Hebrew text with an English voice.
 let HE_VOICE=null;
-function pickHeVoice(){try{const vs=speechSynthesis.getVoices()||[];HE_VOICE=vs.find(x=>/he[-_]?il/i.test(x.lang))||vs.find(x=>/^(he|iw)\b/i.test(x.lang))||vs.find(x=>/hebrew|עברית/i.test(x.name))||null;}catch(e){}}
+function pickHeVoice(){try{const vs=speechSynthesis.getVoices()||[];HE_VOICE=vs.find(x=>/he[-_]?il/i.test(x.lang))||vs.find(x=>/^(he|iw)\b/i.test(x.lang))||vs.find(x=>/hebrew|עברית|carmit/i.test(x.name))||null;}catch(e){}}
 if(window.speechSynthesis){pickHeVoice();speechSynthesis.onvoiceschanged=pickHeVoice;}
-function speak(t){if(muted||!window.speechSynthesis||!t)return;try{if(!HE_VOICE)pickHeVoice();const u=new SpeechSynthesisUtterance(t);u.lang='he-IL';u.rate=1.02;if(HE_VOICE)u.voice=HE_VOICE;speechSynthesis.speak(u);}catch(e){}}
+// iOS חוסם דיבור עד נגיעת משתמש וטוען קולות מאוחר — "משחררים" בנגיעה הראשונה.
+let _ttsReady=false;
+function unlockTTS(){if(_ttsReady||!window.speechSynthesis)return;_ttsReady=true;try{pickHeVoice();const u=new SpeechSynthesisUtterance('.');u.lang='he-IL';u.volume=0;speechSynthesis.speak(u);}catch(e){}}
+function speak(t){if(muted||!window.speechSynthesis||!t)return;try{pickHeVoice();try{speechSynthesis.resume();}catch(e){}const u=new SpeechSynthesisUtterance(t);u.lang='he-IL';u.rate=1.02;if(HE_VOICE)u.voice=HE_VOICE;speechSynthesis.speak(u);}catch(e){}}
 function term(cls,txt){const el=$('term');const d=document.createElement('div');d.className='l '+cls;const ts=new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});d.textContent='['+ts+'] '+txt;el.appendChild(d);el.scrollTop=el.scrollHeight;while(el.children.length>200)el.removeChild(el.firstChild);}
 
 // Direct Supabase REST — no external library (avoids CDN/CSP failure that left it "מתחבר").
@@ -184,11 +187,12 @@ async function send(t){
 }
 
 $('opencard').addEventListener('click',()=>{setTimeout(()=>{$('opencard').style.display='none';},50);});
-$('sendbtn').onclick=()=>{const v=$('cmd').value;$('cmd').value='';send(v);};
+$('sendbtn').onclick=()=>{unlockTTS();const v=$('cmd').value;$('cmd').value='';send(v);};
 $('cmd').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('sendbtn').click();}});
 
 let rec=null,listening=false;
 $('mic').onclick=()=>{
+  unlockTTS();
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){alert('הדפדפן לא תומך בזיהוי דיבור — נסה Chrome (או כתוב בתיבה)');return;}
   if(listening){try{rec.stop();}catch(e){}return;}
