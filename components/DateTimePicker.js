@@ -123,14 +123,16 @@ export default function DateTimePicker({ name, required, includeTime = false, de
     }
   }
 
-  // Business hours: Sun-Thu 09:00-17:00 (last slot 16:45); Friday phone-calls only 10:00-14:00.
+  // Business hours: Sun-Thu 09:00-14:15 (last slot 14:00); Friday phone-calls only 10:00-14:00.
   const selDow = selectedDate ? new Date(`${selectedDate}T12:00:00`).getDay() : null;
   const isFriday = selDow === 5;
   const startHour = isFriday ? 10 : 9;
-  const endHour = isFriday ? 14 : 17; // exclusive — last slot 13:45 / 16:45
+  const endHour = isFriday ? 14 : 15; // exclusive hour ceiling — filtered below to stop at 14:15
   const hours = [];
   for (let h = startHour; h < endHour; h++) {
     for (let m = 0; m < 60; m += 15) {
+      // Sun-Thu: stop at 14:15 (last meeting starts 14:00)
+      if (!isFriday && (h * 60 + m) >= 14 * 60 + 15) break;
       hours.push({ h, m, label: `${pad(h)}:${pad(m)}` });
     }
   }
@@ -150,11 +152,11 @@ export default function DateTimePicker({ name, required, includeTime = false, de
     return h >= 12 && h < 16;
   }
 
-  // Lunch break: Sun-Thu 13:15–14:45
+  // Lunch break: Sun-Thu 13:15–13:45
   function isLunchBreak(h, m) {
-    if (isFriday) return false; // Friday ends at 14:00 anyway
+    if (isFriday) return false;
     const t = h * 60 + m;
-    return t >= 13 * 60 + 15 && t < 14 * 60 + 45;
+    return t >= 13 * 60 + 15 && t < 13 * 60 + 45;
   }
 
   return (

@@ -449,7 +449,7 @@ export default async function Dashboard({ searchParams }) {
       <Link href="/book-call" className="card book-call-cta">
         <div>
           <div style={{ fontSize: 15, fontWeight: 700 }}>📞 קביעת שיחת אפיון</div>
-          <div className="muted" style={{ fontSize: 12.5 }}>בחר שעה נוחה — נציג שלנו יתקשר אליך (ראשון-חמישי, 12:30-16:00)</div>
+          <div className="muted" style={{ fontSize: 12.5 }}>בחר שעה נוחה — נציג שלנו יתקשר אליך (ראשון-חמישי, 12:30-14:00)</div>
         </div>
         <span className="btn" style={{ pointerEvents: 'none' }}>לקביעת שיחה ←</span>
       </Link>
