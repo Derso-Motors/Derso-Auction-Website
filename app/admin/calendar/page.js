@@ -96,10 +96,10 @@ async function addMeeting(formData) {
     if (ilHour < 9 || ilHour >= 14.25) {
       redirect('/admin/calendar?err=' + encodeURIComponent('קביעת פגישות אפשרית בין 09:00 ל-14:15 (פגישה אחרונה 14:00)'));
     }
-    // Lunch break: 13:15–14:45
+    // Lunch break: 14:15–15:00
     const ilMinutes = il.getHours() * 60 + il.getMinutes();
-    if (ilMinutes >= 13 * 60 + 15 && ilMinutes < 14 * 60 + 45) {
-      redirect('/admin/calendar?err=' + encodeURIComponent('הפסקת צהריים 🍽️ — לא ניתן לקבוע פגישות בין 13:15 ל-14:45'));
+    if (ilMinutes >= 14 * 60 + 15 && ilMinutes < 15 * 60) {
+      redirect('/admin/calendar?err=' + encodeURIComponent('הפסקת צהריים 🍽️ — לא ניתן לקבוע פגישות בין 14:15 ל-15:00'));
     }
   }
   const clientName = isWalkIn ? (formData.get('client_name') || 'לקוח חד-פעמי') : null;

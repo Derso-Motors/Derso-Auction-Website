@@ -152,11 +152,11 @@ export default function DateTimePicker({ name, required, includeTime = false, de
     return h >= 12 && h < 16;
   }
 
-  // Lunch break: Sun-Thu 13:15–14:45
+  // Lunch break: Sun-Thu 14:15–15:00
   function isLunchBreak(h, m) {
     if (isFriday) return false;
     const t = h * 60 + m;
-    return t >= 13 * 60 + 15 && t < 14 * 60 + 45;
+    return t >= 14 * 60 + 15 && t < 15 * 60;
   }
 
   return (
