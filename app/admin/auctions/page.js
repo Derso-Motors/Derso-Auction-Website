@@ -1,5 +1,5 @@
 import Shell from '../../../components/Shell';
-import { requireUser } from '../../../lib/supabase-server';
+import { requireAdmin } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
@@ -26,9 +26,7 @@ const STAGE_OPTIONS = [
 
 async function addWinByLink(formData) {
   'use server';
-  const { supabase, user } = await requireUser();
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') redirect('/');
+  const { supabase } = await requireAdmin();
 
   const link = String(formData.get('link') || '').trim();
   const P = '/admin/auctions';
@@ -56,9 +54,7 @@ async function addWinByLink(formData) {
 
 async function updateAuctionStatus(formData) {
   'use server';
-  const { supabase, user } = await requireUser();
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') redirect('/');
+  const { supabase } = await requireAdmin();
   const status = formData.get('status');
   if (!AUCTION_STATUSES.includes(status)) redirect('/admin/auctions?err=' + encodeURIComponent('סטטוס לא תקין'));
   const patch = { status };
@@ -93,9 +89,7 @@ async function updateAuctionStatus(formData) {
 
 async function deleteAuction(formData) {
   'use server';
-  const { supabase, user } = await requireUser();
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') redirect('/');
+  const { supabase } = await requireAdmin();
   const { error } = await supabase.from('auctions').delete().eq('id', formData.get('id'));
   if (error) redirect('/admin/auctions?err=' + encodeURIComponent('מחיקת המכרז נכשלה'));
   revalidatePath('/admin/auctions');
@@ -103,9 +97,7 @@ async function deleteAuction(formData) {
 }
 
 export default async function AuctionsPage() {
-  const { supabase, user } = await requireUser();
-  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (me?.role !== 'admin') redirect('/');
+  const { supabase } = await requireAdmin();
 
   const { data: auctions } = await supabase
     .from('auctions')

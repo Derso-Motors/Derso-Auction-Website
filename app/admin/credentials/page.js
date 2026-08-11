@@ -1,6 +1,6 @@
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
-import { requireUser } from '../../../lib/supabase-server';
+import { requireAdmin } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import CopyButton from './CopyButton';
@@ -9,16 +9,9 @@ export const dynamic = 'force-dynamic';
 
 const P = '/admin/credentials';
 
-async function requireAdmin() {
-  const { supabase, user } = await requireUser();
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') redirect('/');
-  return supabase;
-}
-
 async function upsertCred(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const clientId = formData.get('client_id');
   const platform = formData.get('platform') || 'bidspirit';
   const username = formData.get('username')?.trim();
@@ -40,7 +33,7 @@ async function upsertCred(formData) {
 
 async function deleteCred(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const id = formData.get('id');
   const { error } = await supabase.from('client_credentials').delete().eq('id', id);
   if (error) redirect(P + '?err=' + encodeURIComponent('המחיקה נכשלה'));
@@ -49,7 +42,7 @@ async function deleteCred(formData) {
 }
 
 export default async function CredentialsPage() {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
 
   const { data: clients } = await supabase
     .from('profiles')

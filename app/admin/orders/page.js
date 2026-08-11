@@ -1,6 +1,6 @@
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
-import { requireUser } from '../../../lib/supabase-server';
+import { requireAdmin } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { timeAgo } from '../../../lib/utils';
@@ -12,9 +12,7 @@ const ALLOWED_STATUSES = ['awaiting_payment', 'paid', 'delivered', 'cancelled'];
 
 async function deleteOrder(formData) {
   'use server';
-  const { supabase, user } = await requireUser();
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') redirect('/');
+  const { supabase } = await requireAdmin();
   const { error } = await supabase.from('report_orders').delete().eq('id', formData.get('id'));
   if (error) redirect('/admin/orders?err=' + encodeURIComponent('מחיקת ההזמנה נכשלה'));
   revalidatePath('/admin/orders');
@@ -23,9 +21,7 @@ async function deleteOrder(formData) {
 
 async function updateOrderStatus(formData) {
   'use server';
-  const { supabase, user } = await requireUser();
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') redirect('/');
+  const { supabase } = await requireAdmin();
   const status = formData.get('status');
   if (!ALLOWED_STATUSES.includes(status)) redirect('/admin/orders?err=' + encodeURIComponent('סטטוס לא חוקי'));
   const patch = { status };
@@ -54,14 +50,13 @@ async function updateOrderStatus(formData) {
 }
 
 export default async function OrdersListPage() {
-  const { supabase, user } = await requireUser();
-  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (me?.role !== 'admin') redirect('/');
+  const { supabase } = await requireAdmin();
 
   const { data: orders } = await supabase
     .from('report_orders')
     .select('*, profiles(full_name)')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(200);
 
   const statusLabel = { awaiting_payment: 'ממתין לתשלום', paid: 'שולם', delivered: 'נמסר', cancelled: 'בוטל' };
 

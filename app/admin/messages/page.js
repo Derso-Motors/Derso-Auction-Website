@@ -1,14 +1,11 @@
 import Shell from '../../../components/Shell';
-import { requireUser } from '../../../lib/supabase-server';
-import { redirect } from 'next/navigation';
+import { requireAdmin } from '../../../lib/supabase-server';
 import Messenger from './messenger';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminMessagesPage() {
-  const { supabase, user } = await requireUser();
-  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (me?.role !== 'admin') redirect('/');
+  const { supabase } = await requireAdmin();
 
   const { data: clients } = await supabase
     .from('profiles')

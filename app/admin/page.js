@@ -1,19 +1,11 @@
 import Shell from '../../components/Shell';
-import { createClient, requireUser } from '../../lib/supabase-server';
-import { redirect } from 'next/navigation';
+import { requireAdmin } from '../../lib/supabase-server';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-async function requireAdmin() {
-  const { supabase, user } = await requireUser();
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (profile?.role !== 'admin') redirect('/');
-  return supabase;
-}
-
 export default async function AdminPage() {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
 
   const [{ count: clientCount }, { count: carCount }, { count: orderCount }, { count: meetingCount }, { count: listCount }, { count: auctionCount }, { data: unread }] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'client'),

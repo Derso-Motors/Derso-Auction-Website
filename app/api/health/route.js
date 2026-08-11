@@ -3,7 +3,14 @@ import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 
 // Quick self-diagnosis page: https://<site>/api/health
-export async function GET() {
+// האבחון המלא נחשף רק עם Authorization: Bearer <CRON_SECRET> — בלי זה מחזירים רק ok
+export async function GET(request) {
+  const auth = request.headers.get('authorization') || '';
+  const secret = process.env.CRON_SECRET;
+  if (!secret || auth !== `Bearer ${secret}`) {
+    return Response.json({ ok: true });
+  }
+
   const checks = {};
 
   checks.SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅ מוגדר' : '❌ חסר';

@@ -1,7 +1,7 @@
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
 import DateTimePicker from '../../../components/DateTimePicker';
-import { requireUser } from '../../../lib/supabase-server';
+import { requireAdmin } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { processTaskReminders } from '../../../lib/broadcast';
@@ -10,13 +10,6 @@ import Link from 'next/link';
 export const dynamic = 'force-dynamic';
 
 const PAGE = '/admin/tasks';
-
-async function requireAdmin() {
-  const { supabase, user } = await requireUser();
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') redirect('/');
-  return supabase;
-}
 
 function ilDayRange() {
   const now = new Date();
@@ -41,7 +34,7 @@ function fmtWhen(iso) {
 
 async function addTask(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const dueAt = formData.get('due_at');
   let due = null;
   if (dueAt) {
@@ -63,7 +56,7 @@ async function addTask(formData) {
 
 async function toggleDone(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const id = formData.get('id');
   const { data: t } = await supabase.from('admin_tasks').select('done').eq('id', id).single();
   const { error } = await supabase.from('admin_tasks').update({ done: !t?.done }).eq('id', id);
@@ -74,7 +67,7 @@ async function toggleDone(formData) {
 
 async function deleteTask(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const { error } = await supabase.from('admin_tasks').delete().eq('id', formData.get('id'));
   if (error) redirect(PAGE + '?err=' + encodeURIComponent('המחיקה נכשלה'));
   revalidatePath(PAGE);
@@ -83,7 +76,7 @@ async function deleteTask(formData) {
 
 async function saveOwnerPhone(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const { error } = await supabase.from('broadcast_settings').update({ owner_phone: formData.get('phone') || null }).eq('id', 1);
   if (error) redirect(PAGE + '?err=' + encodeURIComponent('שמירת המספר נכשלה'));
   revalidatePath(PAGE);
@@ -93,7 +86,7 @@ async function saveOwnerPhone(formData) {
 /* -- Page ------------------------------------------------------------------ */
 
 export default async function TasksPage() {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
 
   // Fire any due reminders when the page opens (the cron does it headlessly too).
   await processTaskReminders(supabase);

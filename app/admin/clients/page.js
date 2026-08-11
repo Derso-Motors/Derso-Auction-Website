@@ -1,22 +1,15 @@
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
-import { requireUser } from '../../../lib/supabase-server';
+import { requireAdmin } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-async function requireAdmin() {
-  const { supabase, user } = await requireUser();
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') redirect('/');
-  return supabase;
-}
-
 async function grantCredits(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const clientId = formData.get('client_id');
   const amount = Number(formData.get('amount'));
   const P = '/admin/clients';
@@ -35,7 +28,7 @@ async function grantCredits(formData) {
 
 async function deleteClient(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const id = formData.get('id');
   const P = '/admin/clients';
   const carIds = (await supabase.from('cars').select('id').eq('client_id', id)).data?.map(c => c.id) || [];
@@ -59,7 +52,7 @@ async function deleteClient(formData) {
 }
 
 export default async function ClientsPage() {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
 
   const { data: clients } = await supabase.from('profiles').select('id, full_name, phone, role, credits, created_at').order('created_at', { ascending: false }).limit(200);
   const clientOptions = (clients || []).filter((c) => c.role === 'client');

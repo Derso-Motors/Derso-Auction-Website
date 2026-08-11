@@ -1,6 +1,6 @@
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
-import { requireUser } from '../../../lib/supabase-server';
+import { requireAdmin } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { sendWhatsApp } from '../../../lib/whatsapp';
@@ -11,18 +11,11 @@ export const dynamic = 'force-dynamic';
 
 const PAGE = '/admin/broadcasts';
 
-async function requireAdmin() {
-  const { supabase, user } = await requireUser();
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') redirect('/');
-  return supabase;
-}
-
 /* ── Server actions ─────────────────────────────────────────────────────────── */
 
 async function togglePause() {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const { data: s } = await supabase.from('broadcast_settings').select('paused').eq('id', 1).single();
   const { error } = await supabase.from('broadcast_settings').update({ paused: !s?.paused }).eq('id', 1);
   if (error) redirect(PAGE + '?err=' + encodeURIComponent('שינוי מצב השידור נכשל'));
@@ -32,7 +25,7 @@ async function togglePause() {
 
 async function itemAction(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const id = formData.get('id');
   const act = formData.get('act');
   let ok = '';
@@ -66,7 +59,7 @@ async function itemAction(formData) {
 
 async function clientBulkAction(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const clientId = formData.get('client_id');
   const act = formData.get('act');
   let ok = '';
@@ -86,7 +79,7 @@ async function clientBulkAction(formData) {
 
 async function processNow() {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   await processDueItems(supabase);
   revalidatePath(PAGE);
   redirect(PAGE + '?ok=' + encodeURIComponent('התור עובד — רכבים שהגיע זמנם נשלחו 🔄'));
@@ -94,7 +87,7 @@ async function processNow() {
 
 async function instantSend(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const clientId = formData.get('client_id');
   const item = {
     title: formData.get('title'),
@@ -123,7 +116,7 @@ async function instantSend(formData) {
 
 async function addSubscriber(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const { error } = await supabase.from('broadcast_subscribers').upsert({
     client_id: formData.get('client_id'),
     monthly_fee: formData.get('fee') ? Number(formData.get('fee')) : 20,
@@ -136,7 +129,7 @@ async function addSubscriber(formData) {
 
 async function toggleSubscriber(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const id = formData.get('id');
   const { data: s } = await supabase.from('broadcast_subscribers').select('active').eq('id', id).single();
   const { error } = await supabase.from('broadcast_subscribers').update({ active: !s?.active }).eq('id', id);
@@ -147,7 +140,7 @@ async function toggleSubscriber(formData) {
 
 async function removeSubscriber(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const { error } = await supabase.from('broadcast_subscribers').delete().eq('id', formData.get('id'));
   if (error) redirect(PAGE + '?err=' + encodeURIComponent('הסרת המנוי נכשלה'));
   revalidatePath(PAGE);
@@ -156,7 +149,7 @@ async function removeSubscriber(formData) {
 
 async function setDailyHour(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const h = Number(formData.get('hour'));
   if (!(h >= 0 && h <= 23)) redirect(PAGE + '?err=' + encodeURIComponent('שעה לא תקינה'));
   const { error } = await supabase.from('broadcast_settings').update({ daily_hour: h }).eq('id', 1);
@@ -169,7 +162,7 @@ async function setDailyHour(formData) {
 // quoting the original car message in the client's chat.
 async function sendCarUpdate(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const id = formData.get('id');
   const text = (formData.get('text') || '').trim();
   if (!text) redirect(PAGE + '?err=' + encodeURIComponent('כתוב מה השתנה — העדכון לא נשלח'));
@@ -184,7 +177,7 @@ async function sendCarUpdate(formData) {
 // original car message marking it no longer relevant, and flag it in the log.
 async function retractCar(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const id = formData.get('id');
   const { data: item } = await supabase.from('broadcast_queue').select('*, profiles(phone)').eq('id', id).single();
   if (!(item?.status === 'sent' && !item.retracted && item.profiles?.phone)) redirect(PAGE + '?err=' + encodeURIComponent('אי אפשר לבטל — הרכב כבר בוטל, לא נשלח או שאין טלפון ללקוח'));
@@ -203,7 +196,7 @@ function minutesLeft(iso) {
 
 export default async function BroadcastsPage({ searchParams }) {
   const archivePage = Math.max(1, Number(searchParams?.page) || 1);
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
 
   // Opportunistic processing: any due car goes out when the page is opened.
   await processDueItems(supabase);

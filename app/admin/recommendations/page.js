@@ -1,6 +1,6 @@
 import { SubmitButton, DeleteButton } from '../../../components/SubmitButton';
 import Shell from '../../../components/Shell';
-import { requireUser } from '../../../lib/supabase-server';
+import { requireAdmin } from '../../../lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { sendWhatsApp } from '../../../lib/whatsapp';
@@ -8,16 +8,9 @@ import BidspiritLinkFill from '../../../components/BidspiritLinkFill';
 
 export const dynamic = 'force-dynamic';
 
-async function requireAdmin() {
-  const { supabase, user } = await requireUser();
-  const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (p?.role !== 'admin') redirect('/');
-  return supabase;
-}
-
 async function addRecommendationList(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const clientId = formData.get('client_id');
   const title = formData.get('title') || 'רכבים מומלצים';
   const { data: inserted, error } = await supabase.from('recommendation_lists').insert({
@@ -40,7 +33,7 @@ async function addRecommendationList(formData) {
 
 async function addRecommendedCar(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const { error } = await supabase.from('recommended_cars').insert({
     list_id: formData.get('list_id'),
     title: formData.get('title'),
@@ -59,7 +52,7 @@ async function addRecommendedCar(formData) {
 
 async function deleteRecommendationList(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const id = formData.get('id');
   const { error: carsError } = await supabase.from('recommended_cars').delete().eq('list_id', id);
   if (carsError) redirect('/admin/recommendations?err=' + encodeURIComponent('מחיקת הרשימה נכשלה'));
@@ -71,7 +64,7 @@ async function deleteRecommendationList(formData) {
 
 async function deleteRecommendedCar(formData) {
   'use server';
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
   const { error } = await supabase.from('recommended_cars').delete().eq('id', formData.get('id'));
   if (error) redirect('/admin/recommendations?err=' + encodeURIComponent('מחיקת הרכב נכשלה'));
   revalidatePath('/admin/recommendations');
@@ -79,7 +72,7 @@ async function deleteRecommendedCar(formData) {
 }
 
 export default async function RecommendationsPage() {
-  const supabase = await requireAdmin();
+  const { supabase } = await requireAdmin();
 
   const [{ data: lists }, { data: clients }] = await Promise.all([
     supabase.from('recommendation_lists').select('*, profiles(full_name), recommended_cars(id, title, client_interest, client_max_bid)').order('created_at', { ascending: false }),
