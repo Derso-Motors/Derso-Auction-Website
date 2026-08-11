@@ -40,7 +40,7 @@ export default function Landing() {
 
         <div className="row" style={{ justifyContent: 'center', flexWrap: 'wrap', gap: 14, margin: '32px 0 20px' }}>
           <Link href="/login" className="btn" style={{ fontSize: 15, padding: '12px 28px' }}>כניסה / הרשמה</Link>
-          <a href="https://wa.me/972537930055" target="_blank" rel="noreferrer" className="btn secondary" style={{ fontSize: 15, padding: '12px 28px' }}>
+          <a href="https://wa.me/972559506913" target="_blank" rel="noreferrer" className="btn secondary" style={{ fontSize: 15, padding: '12px 28px' }}>
             דברו איתנו בוואטסאפ
           </a>
         </div>
