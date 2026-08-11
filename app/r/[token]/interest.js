@@ -17,6 +17,14 @@ export default function InterestButtons({ token, carId, current }) {
       setSaveError('השמירה נכשלה — נסו שוב או פנו אלינו');
     } else {
       setInterest(value);
+      if (value === 'interested') {
+        // התראת וואטסאפ לבעל העסק — fire-and-forget
+        fetch('/api/notify/interest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ carId, interest: 'interested', token }),
+        }).catch(() => {});
+      }
     }
     setSaving(false);
   }

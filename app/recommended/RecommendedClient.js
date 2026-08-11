@@ -39,6 +39,14 @@ export default function RecommendedClient({ initialCars, inspectionBalance = 0 }
       showToast('שמירת הסימון נכשלה — נסה שוב', true);
       return;
     }
+    if (next === 'interested') {
+      // התראת וואטסאפ לבעל העסק — fire-and-forget
+      fetch('/api/notify/interest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ carId: car.id, interest: 'interested' }),
+      }).catch(() => {});
+    }
     if (next === 'interested') showToast('סומן כמעניין ✓');
     else if (next === 'not_interested') showToast('סומן כלא רלוונטי ✓');
     else showToast('הסימון הוסר ✓');

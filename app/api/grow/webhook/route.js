@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { CREDIT_PACKAGES, REPORT_PACKAGES, verifyWebhook } from '../../../../lib/grow';
+import { sendWhatsApp, OWNER_PHONE } from '../../../../lib/whatsapp';
 import { NextResponse } from 'next/server';
 
 const supabaseAdmin = () => createClient(
@@ -11,6 +12,19 @@ const supabaseAdmin = () => createClient(
 function dbFail(where, error) {
   console.error(`[grow:webhook] ${where} failed:`, error?.message || error);
   return NextResponse.json({ ok: false, error: `db error at ${where}` }, { status: 500 });
+}
+
+// קבלות בוואטסאפ אחרי תשלום מוצלח — כישלון שליחה לעולם לא מפיל תשלום שעובד.
+async function notifyPayment(sb, userId, amount, label) {
+  try {
+    const { data: prof } = await sb.from('profiles').select('full_name, phone').eq('id', userId).single();
+    if (prof?.phone) {
+      await sendWhatsApp(prof.phone, `התשלום התקבל ✅\n₪${amount} — ${label}\nתודה שבחרת בנו!\n\nדרסו — בית ליווי מקצועי למכרזים`);
+    }
+    await sendWhatsApp(OWNER_PHONE, `💳 תשלום חדש ב-Grow — ${prof?.full_name || 'לקוח'}, ₪${amount}, ${label}`);
+  } catch (err) {
+    console.error('[grow:webhook] notifyPayment failed:', err?.message || err);
+  }
 }
 
 export async function POST(request) {
@@ -76,6 +90,7 @@ export async function POST(request) {
       grow_tx_code: txCode,
     });
     if (markerErr) return dbFail('credit_transactions:sub marker', markerErr);
+    await notifyPayment(sb, userId, paymentSum, custom2 === 'sub_broadcast' ? 'מנוי שידור (הוראת קבע)' : 'עוזר אישי AI (הוראת קבע)');
     return NextResponse.json({ ok: true, type: custom2 });
   }
 
@@ -92,6 +107,7 @@ export async function POST(request) {
     }));
     const { error } = await sb.from('report_orders').insert(rows);
     if (error) return dbFail('report_orders:insert package', error);
+    await notifyPayment(sb, userId, paymentSum, `חבילת דוחות — ${reportPkg.label}`);
     return NextResponse.json({ ok: true, type: 'report_package', package: reportPkg.key, orders: rows.length });
   }
 
@@ -105,6 +121,7 @@ export async function POST(request) {
       p_grow_tx_code: txCode,
     });
     if (error) return dbFail('admin_add_credits:package', error);
+    await notifyPayment(sb, userId, paymentSum, `חבילת קרדיטים — ${pkg.label}`);
     return NextResponse.json({ ok: true, type: 'package', package: pkg.key, credits: pkg.credits });
   }
 
@@ -120,6 +137,7 @@ export async function POST(request) {
       .select('id');
     if (error) return dbFail('report_orders:update order', error);
     // 0 שורות = ההזמנה כבר לא ב-awaiting_payment (כנראה שולמה) — אין מה לנסות שוב.
+    if ((updated || []).length > 0) await notifyPayment(sb, userId, paymentSum, 'תשלום הזמנת דוח');
     return NextResponse.json({ ok: true, type: 'order', orderId: custom2, matched: (updated || []).length });
   }
 
@@ -132,5 +150,6 @@ export async function POST(request) {
   });
   if (genericErr) return dbFail('admin_add_credits:generic', genericErr);
 
+  await notifyPayment(sb, userId, paymentSum, 'טעינת קרדיטים');
   return NextResponse.json({ ok: true, type: 'generic', amount: paymentSum });
 }

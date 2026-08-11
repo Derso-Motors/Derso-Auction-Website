@@ -47,6 +47,12 @@ export default function Chat({ clientId, initialMessages, senderRole = 'client' 
       return;
     }
     if (data) setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]));
+    // התראת וואטסאפ — fire-and-forget, כישלון לא מפריע לצ'אט
+    fetch('/api/notify/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientId }),
+    }).catch(() => {});
     setBody('');
     setSending(false);
   }

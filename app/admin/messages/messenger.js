@@ -99,6 +99,12 @@ export default function Messenger({ conversations: initial }) {
         })
       );
     }
+    // התראת וואטסאפ ללקוח — fire-and-forget, כישלון לא מפריע לצ'אט
+    fetch('/api/notify/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientId: activeId }),
+    }).catch(() => {});
     setBody('');
     setSending(false);
   }
