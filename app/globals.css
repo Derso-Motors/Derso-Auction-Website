@@ -955,5 +955,25 @@ table.data tbody tr:nth-child(n+6) { animation-delay: 0.2s; }
   .main-anim > *, .card.stat, table.data tbody tr { animation: none; }
 }
 
+/* ── Page loader (app/loading.js) ──────────────────────────────────────────── */
+.page-loader { display: flex; align-items: center; justify-content: center; min-height: 40vh; }
+.page-loader .spinner {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  animation: spin 0.8s linear infinite;
+}
+
+/* ── Mobile tables — hint that the table scrolls (RTL: scroll goes left) ───── */
+@media (max-width: 600px) {
+  .table-wrap { -webkit-overflow-scrolling: touch; position: relative; }
+  .table-wrap::after {
+    content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 24px;
+    background: linear-gradient(to right, var(--bg, #131315), transparent);
+    pointer-events: none;
+  }
+  table.data td, table.data th { padding: 8px 6px; font-size: 12.5px; }
+}
+
 
 

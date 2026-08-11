@@ -3,7 +3,8 @@ import Shell from '../components/Shell';
 import WelcomeCallPopup from '../components/WelcomeCallPopup';
 import RealtimeAlertClient from '../components/RealtimeAlertClient';
 import { SubmitButton, DeleteButton } from '../components/SubmitButton';
-import { requireUser } from '../lib/supabase-server';
+import { requireUser, getOptionalUser } from '../lib/supabase-server';
+import Landing from '../components/Landing';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { timeAgo } from '../lib/utils';
@@ -83,7 +84,8 @@ async function deleteCarAction(formData) {
 }
 
 export default async function Dashboard({ searchParams }) {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await getOptionalUser();
+  if (!user) return <Landing />;
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
   const isAdmin = profile?.role === 'admin';
 

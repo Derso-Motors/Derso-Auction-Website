@@ -3,6 +3,10 @@ import InterestButtons from './interest';
 
 export const dynamic = 'force-dynamic';
 
+export async function generateMetadata() {
+  return { title: 'המלצת רכב מדרסו', robots: { index: false } };
+}
+
 export default async function RecommendationsPage({ params }) {
   const supabase = createClient();
   const { data: rows } = await supabase.rpc('get_recommendations_by_token', { p_token: params.token });
