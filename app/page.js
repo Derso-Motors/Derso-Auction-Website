@@ -39,27 +39,33 @@ async function inviteClientWhatsApp(formData) {
   const { supabase, user } = await requireUser();
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (profile?.role !== 'admin') redirect('/');
-  const phone = String(formData.get('phone') || '').trim();
-  if (!phone) redirect('/?err=' + encodeURIComponent('נא להזין מספר טלפון'));
+  const raw = String(formData.get('phone') || '').trim();
+  if (!raw) redirect('/?err=' + encodeURIComponent('נא להזין מספר טלפון'));
+  let phone = raw.replace(/\D/g, '');
+  if (phone.startsWith('0')) phone = '972' + phone.slice(1);
+  if (!phone.startsWith('972') || phone.length < 11) {
+    redirect('/?err=' + encodeURIComponent('מספר לא תקין — בדוק ונסה שוב'));
+  }
   const msg = `היי! 👋
 
 כאן דרסו — בית ליווי מקצועי למכרזי רכב.
 
-הכנו לך מערכת אישית שתלווה אותך בקנייה של הרכב החדש שלך:
+הכנו לך פורטל אישי שילווה אותך בקנייה של הרכב החדש שלך:
 🚗 רכבים שנבחרו במיוחד בשבילך
 📋 דוחות בדיקה מקיפים לפני כל מכרז
 📅 קביעת שיחות ומעקב מלא אחרי התהליך
 
-להרשמה ולכניסה למערכת:
+להרשמה ולכניסה:
 https://auctions.derso.net/login
 
 נשמח ללוות אותך לעסקה בטוחה ומשתלמת 🤝
 
 דרסו — בית ליווי מקצועי למכרזים`;
-  const res = await sendWhatsApp(phone, msg);
+  // Queued for the office WhatsApp bot — the reliable delivery path
+  const { error } = await supabase.from('wa_outbox').insert({ phone, text: msg });
   revalidatePath('/');
-  if (res?.ok === false) redirect('/?err=' + encodeURIComponent('שליחת ההזמנה נכשלה — בדוק את המספר'));
-  redirect('/?ok=' + encodeURIComponent('הזמנה נשלחה בוואטסאפ ל-' + phone + ' ✓'));
+  if (error) redirect('/?err=' + encodeURIComponent('שליחת ההזמנה נכשלה — נסה שוב'));
+  redirect('/?ok=' + encodeURIComponent('ההזמנה בדרך בוואטסאפ ל-0' + phone.slice(3) + ' ✓'));
 }
 
 async function deleteOrderAction(formData) {

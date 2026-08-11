@@ -144,6 +144,19 @@ async function addMeeting(formData) {
     const timeStr = scheduledAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: TZ });
     const msg = typeConfig.template(name, title, dateStr, timeStr, notes);
     await sendWhatsApp(phone, msg);
+
+    // מספר שלא רשום בפורטל? מזמינים אותו להתחבר לפני שיחת האיפיון —
+    // שם מחכים לו הזכיות, הבדיקות וכל השליטה והבקרה.
+    const norm = String(phone).replace(/\D/g, '').replace(/^0/, '972');
+    const { data: allProfiles } = await supabase.from('profiles').select('phone');
+    const registered = (allProfiles || []).some((p2) =>
+      String(p2.phone || '').replace(/\D/g, '').replace(/^0/, '972') === norm);
+    if (!registered && norm.startsWith('972')) {
+      await supabase.from('wa_outbox').insert({
+        phone: norm,
+        text: `היי${name ? ' ' + name : ''}! 👋\n\nלקראת שיחת האיפיון שלך עם דרסו, הכנו לך פורטל אישי — שם תמצאו את הרכבים שנבחרו במיוחד בשבילכם, מעקב מכרזים וזכיות, דוחות בדיקה וכל השליטה והבקרה על התהליך.\n\nמומלץ להתחבר לפני השיחה:\nhttps://auctions.derso.net/login\n\nנתראה בשיחה! 🤝\nדרסו — בית ליווי מקצועי למכרזים`,
+      });
+    }
   }
 
   revalidatePath('/admin/calendar');
