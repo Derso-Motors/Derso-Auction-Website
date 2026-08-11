@@ -16,9 +16,6 @@ async function saveOnboarding(formData) {
   const city = String(formData.get('city') || '').trim();
   const street = String(formData.get('street') || '').trim();
   const nationalId = String(formData.get('national_id') || '').replace(/\D/g, '');
-  const cardHolder = String(formData.get('card_holder') || '').trim();
-  const cardNumber = String(formData.get('card_number') || '').replace(/\D/g, '');
-  const cardExpiry = String(formData.get('card_expiry') || '').trim();
 
   // Require a real Hebrew first + last name (replaces the Google display name).
   if (!firstName || !lastName) redirect(P + '?err=' + encodeURIComponent('יש למלא שם פרטי ושם משפחה'));
@@ -29,20 +26,13 @@ async function saveOnboarding(formData) {
   if (!bidspirit) redirect(P + '?err=' + encodeURIComponent('חסר אימייל'));
   if (!city || !street) redirect(P + '?err=' + encodeURIComponent('חסרה כתובת מלאה (עיר ורחוב)'));
   if (nationalId.length !== 9) redirect(P + '?err=' + encodeURIComponent('תעודת זהות חייבת להכיל 9 ספרות'));
-  if (!cardHolder) redirect(P + '?err=' + encodeURIComponent('חסר שם בעל הכרטיס'));
-  if (cardNumber.length < 12 || cardNumber.length > 19) redirect(P + '?err=' + encodeURIComponent('מספר הכרטיס לא תקין'));
-  if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardExpiry)) redirect(P + '?err=' + encodeURIComponent('תוקף הכרטיס חייב להיות בפורמט MM/YY, למשל 08/28'));
 
-  // Only the last 4 digits are stored — full card numbers never touch our DB.
   const { error } = await supabase.from('client_billing').upsert({
     user_id: user.id,
     bidspirit_username: bidspirit,
     address_city: city,
     address_street: street,
     national_id: nationalId,
-    card_holder: cardHolder,
-    card_last4: cardNumber.slice(-4),
-    card_expiry: cardExpiry,
     updated_at: new Date().toISOString(),
   });
   if (error) redirect(P + '?err=' + encodeURIComponent('שמירת הפרטים נכשלה — נסה שוב'));
