@@ -37,7 +37,7 @@ async function bookCall(formData) {
   const P = '/book-call';
 
   if (isLunchSlot(time)) {
-    redirect('/book-call?err=' + encodeURIComponent('השעות 13:15–13:45 סגורות (הפסקת צהריים) — בחרו שעה אחרת'));
+    redirect('/book-call?err=' + encodeURIComponent('השעות 13:15–14:45 סגורות (הפסקת צהריים) — בחרו שעה אחרת'));
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !SLOT_TIMES.includes(time)) {
     redirect(P + '?err=' + encodeURIComponent('בחירת מועד לא תקינה — נסה שוב'));
@@ -151,7 +151,7 @@ export default async function BookCallPage() {
       .select('scheduled_at').gte('scheduled_at', rangeStart).lte('scheduled_at', rangeEnd);
     busy = busy.concat((meetings || []).map((m) => m.scheduled_at));
   }
-  // Lunch break 13:15–13:45 — always shown as taken
+  // Lunch break 13:15–14:45 — always shown as taken
   for (const d of days) {
     for (const t of SLOT_TIMES) {
       if (isLunchSlot(t)) busy.push(ilDateTimeToUtc(d, t).toISOString());
