@@ -236,7 +236,7 @@ export default function DateTimePicker({ name, required, includeTime = false, de
               </span>
             )}
           </div>
-          <div className="dtp-time-grid">
+          <div data-lenis-prevent className="dtp-time-grid">
             {hours.map(({ h, m, label }) => {
               const booked = isBooked(h, m);
               const past = isPastTime(h, m);

@@ -59,7 +59,7 @@ export default function Chat({ clientId, initialMessages, senderRole = 'client' 
 
   return (
     <div>
-      <div style={{ maxHeight: 420, overflowY: 'auto', marginBottom: 16 }}>
+      <div data-lenis-prevent style={{ maxHeight: 420, overflowY: 'auto', marginBottom: 16 }}>
         {!messages.length && <div className="empty">אין הודעות עדיין — אפשר לכתוב לנו כאן</div>}
         {messages.map((m) => (
           <div key={m.id} className={`msg-row ${m.sender_role}`}>

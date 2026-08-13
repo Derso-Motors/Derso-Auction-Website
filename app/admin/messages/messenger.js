@@ -125,7 +125,7 @@ export default function Messenger({ conversations: initial }) {
             placeholder="חיפוש לקוח..."
           />
         </div>
-        <div className="messenger-list">
+        <div data-lenis-prevent className="messenger-list">
           {filtered.map((c) => (
             <div
               key={c.id}
@@ -171,7 +171,7 @@ export default function Messenger({ conversations: initial }) {
                 <div className="muted" style={{ fontSize: 12 }}>{active.phone || ''}</div>
               </div>
             </div>
-            <div className="messenger-messages">
+            <div data-lenis-prevent className="messenger-messages">
               {!messages.length && <div className="empty">אין הודעות עדיין — שלח הודעה ראשונה</div>}
               {messages.map((m) => (
                 <div key={m.id} className={`msg-row ${m.sender_role}`}>

@@ -47,7 +47,7 @@ export default function MeetingsTable({ meetings = [], deleteAction, meetingType
       {rows.length === 0 ? (
         <div className="empty">{q ? 'אין תוצאות לחיפוש' : 'אין פגישות'}</div>
       ) : (
-        <div style={{ maxHeight: 460, overflowY: 'auto', borderRadius: 10 }}>
+        <div data-lenis-prevent style={{ maxHeight: 460, overflowY: 'auto', borderRadius: 10 }}>
           <table className="data">
             <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--card, #fff)' }}>
               <tr><th>נושא</th><th>לקוח</th><th>טלפון</th><th>תאריך</th><th>שעה</th><th>סוג</th><th>הערות</th><th>סטטוס</th><th></th></tr>
