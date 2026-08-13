@@ -102,6 +102,23 @@ export default function Landing() {
           </div>
         </section>
 
+
+        {/* ── רצועת טיקר (fan-energy style) — הדופק של המכרזים ── */}
+        <div className="landing-marquee" aria-hidden="true">
+          <div className="landing-marquee-track">
+            {[0, 1].map((k) => (
+              <span key={k}>
+                <span className="landing-marquee-item"><span className="dot" />קיה ספורטאז 2022 — <b>נמכר <span className="up">‎-19%</span> ממחיר שוק</b></span>
+                <span className="landing-marquee-item"><span className="dot" />דוח בדיקה מלא לפני כל הצעה</span>
+                <span className="landing-marquee-item"><span className="dot" />טויוטה קורולה 2023 — <b>נמכר <span className="up">‎-24%</span> ממחיר שוק</b></span>
+                <span className="landing-marquee-item"><span className="dot" />ליווי מלא עד המפתחות ביד</span>
+                <span className="landing-marquee-item"><span className="dot" />מאזדה CX-5 2021 — <b>נמכר <span className="up">‎-17%</span> ממחיר שוק</b></span>
+                <span className="landing-marquee-item"><span className="dot" />שיחת אפיון ראשונה חינם</span>
+              </span>
+            ))}
+          </div>
+        </div>
+
         {/* ── stats ── */}
         <section className="landing-stats">
           {STATS.map((s, i) => (
@@ -114,6 +131,8 @@ export default function Landing() {
 
         {/* ── features ── */}
         <section className="landing-section">
+          <span className="landing-big-num" aria-hidden="true">01</span>
+          <span className="landing-eyebrow" data-reveal>WHY DERSO</span>
           <h2 className="landing-h2" data-reveal>למה דרסו?</h2>
           <div className="landing-features">
             {FEATURES.map((f, i) => (
@@ -128,6 +147,8 @@ export default function Landing() {
 
         {/* ── how it works ── */}
         <section className="landing-section">
+          <span className="landing-big-num" aria-hidden="true">02</span>
+          <span className="landing-eyebrow" data-reveal>HOW IT WORKS</span>
           <h2 className="landing-h2" data-reveal>איך זה עובד?</h2>
           <div className="landing-steps">
             {STEPS.map((s, i) => (

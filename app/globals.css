@@ -1374,3 +1374,52 @@ html.lenis, html.lenis body { height: auto; }
   .landing-road-line, .landing-streak, .landing-car, .landing-beam, .landing-wheel, .landing-hud { animation: none; }
   .landing-streak { opacity: 0.35; transform: none; }
 }
+
+/* ══ Landing: שכבת fan-energy — רצועת טיקר, מספרים ענקיים, eyebrows ═════════ */
+/* רצועת טיקר אינסופית (marquee) — כמו לוח נסחר של מכרזים */
+.landing-marquee {
+  overflow: hidden; white-space: nowrap; direction: ltr;
+  border-block: 1px solid var(--border);
+  padding: 14px 0; margin: 26px 0 6px;
+  background: rgba(255,255,255,0.015);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.landing-marquee-track { display: inline-flex; gap: 0; animation: marqueeRTL 30s linear infinite; will-change: transform; }
+.landing-marquee:hover .landing-marquee-track { animation-play-state: paused; }
+.landing-marquee-item {
+  display: inline-flex; align-items: center; gap: 14px; padding: 0 22px;
+  font-family: var(--font-mono), 'JetBrains Mono', monospace; font-size: 13px;
+  letter-spacing: 0.05em; color: var(--muted); direction: rtl;
+}
+.landing-marquee-item .dot { width: 5px; height: 5px; border-radius: 50%; background: #ffb547; box-shadow: 0 0 8px #ffb54788; flex-shrink: 0; }
+.landing-marquee-item b { color: var(--text); font-weight: 600; }
+.landing-marquee-item .up { color: #4ade80; }
+@keyframes marqueeRTL { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+/* מספרי סקשן ענקיים בסגנון fan-energy (01/02) — קונטור בלבד, שקטים ברקע הכותרת */
+.landing-section { position: relative; }
+.landing-eyebrow {
+  display: block; font-family: var(--font-mono), monospace; font-size: 12px;
+  letter-spacing: 0.28em; color: #ffb547; margin-bottom: 10px; font-weight: 500;
+}
+.landing-big-num {
+  position: absolute; top: -14px; inset-inline-end: 4%;
+  font-size: clamp(90px, 14vw, 170px); font-weight: 800; line-height: 1;
+  color: transparent; -webkit-text-stroke: 1px rgba(186,199,227,0.13);
+  pointer-events: none; user-select: none; font-family: var(--font-mono), monospace;
+}
+/* מספרי הצעדים — גדולים וקונטוריים במקום עיגול קטן */
+.landing-step { position: relative; overflow: hidden; }
+.landing-step .landing-step-num {
+  position: absolute; top: -6px; inset-inline-end: 8px;
+  background: none; border: none; width: auto; height: auto;
+  font-family: var(--font-mono), monospace; font-size: 64px; font-weight: 800; line-height: 1;
+  color: transparent; -webkit-text-stroke: 1.2px rgba(255,181,71,0.35);
+}
+@media (max-width: 640px) {
+  .landing-big-num { font-size: 90px; top: -8px; }
+  .landing-marquee-item { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-marquee-track { animation: none; }
+}
