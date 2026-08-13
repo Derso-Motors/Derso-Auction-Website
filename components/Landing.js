@@ -78,6 +78,27 @@ export default function Landing() {
                 💬 דברו איתנו
               </a>
             </div>
+
+            {/* ── חתימת העמוד: כביש לילה חי — רכב נוסע, פסי-אור, טלמטריית מכרז ── */}
+            <div className="landing-road" data-reveal aria-hidden="true">
+              <span className="landing-streak amber" style={{ top: '30%', left: 0, right: 0, '--dur': '2.4s', '--delay': '0s' }} />
+              <span className="landing-streak cyan" style={{ top: '46%', left: 0, right: 0, '--dur': '3.1s', '--delay': '1.2s' }} />
+              <span className="landing-streak red" style={{ top: '62%', left: 0, right: 0, '--dur': '2.8s', '--delay': '2s' }} />
+              <div className="landing-hud" style={{ top: 18, right: 24, '--delay': '0s' }}>מכרז חי · <b>סגירה 14:00</b></div>
+              <div className="landing-hud good" style={{ top: 22, left: 28, '--delay': '1.4s' }}>מחיר שוק <b>‎-22%</b></div>
+              <div className="landing-hud" style={{ top: 64, right: '38%', '--delay': '2.6s' }}>דוח בדיקה · <b>עבר ✓</b></div>
+              <div className="landing-beam" />
+              <svg className="landing-car" viewBox="0 0 220 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 52c-6 0-9-4-9-9 0-4 2-7 7-8l14-3 18-16c3-3 7-5 12-5h60c5 0 10 2 13 5l17 15 44 6c6 1 10 4 10 9 0 4-3 6-8 6H14z" fill="#20222a" stroke="#3d4152" strokeWidth="1.5"/>
+                <path d="M52 18l14-12c2-2 5-3 8-3h40c4 0 7 1 9 3l14 12H52z" fill="#151720" stroke="#3d4152" strokeWidth="1.2"/>
+                <path d="M60 17l10-9c1.5-1.5 3.5-2 6-2h14v11H60zM96 6h18c3 0 5 1 6 2l10 9H96V6z" fill="#7dd3fc" fillOpacity="0.16" stroke="#7dd3fc" strokeOpacity="0.35" strokeWidth="0.8"/>
+                <rect x="6" y="42" width="10" height="5" rx="2.5" fill="#ffd678"/>
+                <rect x="204" y="42" width="9" height="5" rx="2.5" fill="#ff4d4d"/>
+                <g className="landing-wheel"><circle cx="58" cy="56" r="13" fill="#0c0d11" stroke="#4a4f63" strokeWidth="2.5"/><path d="M58 46v20M48 56h20M51 49l14 14M65 49L51 63" stroke="#666c85" strokeWidth="1.6"/></g>
+                <g className="landing-wheel"><circle cx="164" cy="56" r="13" fill="#0c0d11" stroke="#4a4f63" strokeWidth="2.5"/><path d="M164 46v20M154 56h20M157 49l14 14M171 49l-14 14" stroke="#666c85" strokeWidth="1.6"/></g>
+              </svg>
+              <div className="landing-road-line" />
+            </div>
           </div>
         </section>
 

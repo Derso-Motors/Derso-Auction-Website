@@ -1288,3 +1288,89 @@ html.lenis, html.lenis body { height: auto; }
   [data-reveal] { opacity: 1; transform: none; transition: none; }
   .landing-feature-card:hover { transform: none; }
 }
+
+/* ══ Landing: "כביש לילה חי" — סצנת רכב נוסע (חתימת העמוד) ══════════════════
+   רכב-צללית על כביש לילי: פסי כביש נעים, פסי-אור חולפים (חשיפה ארוכה),
+   פנסים קדמיים אמבר + אחוריים אדומים, ותגיות HUD בפונט מונו — טלמטריית מכרזים.
+   CSS בלבד. כבוי לחלוטין תחת prefers-reduced-motion. */
+.landing-road {
+  position: relative; height: 220px; margin: 36px auto 8px; max-width: 860px;
+  overflow: hidden; border-radius: 18px;
+  background: linear-gradient(180deg, transparent 0%, rgba(186,199,227,0.03) 40%, rgba(0,0,0,0.5) 100%);
+  border: 1px solid var(--border);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+/* פס הכביש + קו מרכזי מקווקו שנע — תחושת מהירות מתמדת */
+.landing-road::before {
+  content: ''; position: absolute; inset: auto 0 0 0; height: 74px;
+  background: linear-gradient(180deg, #1a1a1e, #101013);
+  border-top: 1px solid #2c2c33;
+}
+.landing-road-line {
+  position: absolute; bottom: 36px; left: -60px; right: -60px; height: 3px;
+  background: repeating-linear-gradient(90deg, #4a4a55 0 42px, transparent 42px 84px);
+  animation: roadDash 0.7s linear infinite;
+}
+@keyframes roadDash { to { transform: translateX(-84px); } }
+/* פסי-אור חולפים (חשיפה ארוכה של תנועה) */
+.landing-streak {
+  position: absolute; height: 2px; border-radius: 2px; opacity: 0;
+  animation: streakBy var(--dur, 2.6s) linear infinite; animation-delay: var(--delay, 0s);
+}
+.landing-streak.amber { background: linear-gradient(90deg, transparent, #ffb547, transparent); box-shadow: 0 0 12px #ffb54766; }
+.landing-streak.cyan  { background: linear-gradient(90deg, transparent, #7dd3fc, transparent); box-shadow: 0 0 12px #7dd3fc55; }
+.landing-streak.red   { background: linear-gradient(90deg, transparent, #ff4d4d, transparent); box-shadow: 0 0 10px #ff4d4d55; }
+@keyframes streakBy {
+  0%   { transform: translateX(110%); opacity: 0; }
+  8%   { opacity: 0.9; }
+  92%  { opacity: 0.9; }
+  100% { transform: translateX(-130%); opacity: 0; }
+}
+/* הרכב: נוסע שמאלה (כיוון הקריאה ב-RTL), ריחוף עדין של מתלים */
+.landing-car {
+  position: absolute; bottom: 58px; right: 12%; width: 220px;
+  filter: drop-shadow(0 14px 18px rgba(0,0,0,0.55));
+  animation: carBob 1.1s ease-in-out infinite;
+}
+@keyframes carBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
+/* אלומת פנס קדמי (שמאלה) */
+.landing-beam {
+  position: absolute; bottom: 62px; right: calc(12% + 196px); width: 210px; height: 46px;
+  background: linear-gradient(270deg, rgba(255,214,120,0.28), transparent 85%);
+  clip-path: polygon(100% 35%, 0 0, 0 100%, 100% 65%);
+  animation: beamFlicker 3.2s ease-in-out infinite;
+}
+@keyframes beamFlicker { 0%,100% { opacity: 0.85; } 47% { opacity: 0.85; } 50% { opacity: 0.55; } 53% { opacity: 0.85; } }
+/* גלגלים מסתובבים */
+.landing-wheel { transform-origin: center; transform-box: fill-box; animation: wheelSpin 0.5s linear infinite; }
+@keyframes wheelSpin { to { transform: rotate(-360deg); } }
+/* תגיות HUD — טלמטריה של מכרז, מונו, ריחוף עדין */
+.landing-hud {
+  position: absolute; font-family: var(--font-mono), 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.06em; color: #9fb4d8;
+  background: rgba(19,19,21,0.72); border: 1px solid rgba(186,199,227,0.22);
+  border-radius: 8px; padding: 5px 10px; backdrop-filter: blur(4px);
+  box-shadow: 0 0 18px rgba(125,211,252,0.08);
+  animation: hudFloat 4.5s ease-in-out infinite; animation-delay: var(--delay, 0s);
+}
+.landing-hud b { color: #7dd3fc; font-weight: 600; }
+.landing-hud.good b { color: #4ade80; }
+@keyframes hudFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+/* מיקרו-אינטראקציה: כרטיסים נדלקים כמו פנס בהובר */
+.landing-feature-card, .landing-step { transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s, border-color 0.25s; }
+.landing-feature-card:hover, .landing-step:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255,181,71,0.45);
+  box-shadow: 0 12px 34px rgba(0,0,0,0.4), 0 0 24px rgba(255,181,71,0.10);
+}
+@media (max-width: 640px) {
+  .landing-road { height: 170px; }
+  .landing-car { width: 150px; bottom: 52px; }
+  .landing-beam { right: calc(12% + 134px); width: 130px; height: 34px; bottom: 55px; }
+  .landing-hud { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-road-line, .landing-streak, .landing-car, .landing-beam, .landing-wheel, .landing-hud { animation: none; }
+  .landing-streak { opacity: 0.35; transform: none; }
+}
