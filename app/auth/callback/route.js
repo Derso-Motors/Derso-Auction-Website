@@ -36,9 +36,12 @@ export async function GET(request) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}/`);
+      // New user (created in the last 2 minutes) → show broadcast popup
+      const createdAt = data?.user?.created_at ? new Date(data.user.created_at) : null;
+      const isNew = createdAt && (Date.now() - createdAt.getTime()) < 120000;
+      return NextResponse.redirect(`${origin}/${isNew ? '?welcome=true' : ''}`);
     }
     const msg = /expired|state/i.test(error.message || '')
       ? 'ההתחברות לקחה יותר מדי זמן ופג תוקפה — נסה שוב ובחר חשבון מיד.'

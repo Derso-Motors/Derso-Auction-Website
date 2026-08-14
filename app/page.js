@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Shell from '../components/Shell';
-import WelcomeCallPopup from '../components/WelcomeCallPopup';
+import BroadcastPopup from '../components/BroadcastPopup';
 import RealtimeAlertClient from '../components/RealtimeAlertClient';
 import { SubmitButton, DeleteButton } from '../components/SubmitButton';
 import { requireUser, getOptionalUser } from '../lib/supabase-server';
@@ -416,14 +416,16 @@ export default async function Dashboard({ searchParams }) {
   if (!profile?.phone_verified) redirect('/verify-phone');
   if (!profile?.onboarded) redirect('/onboarding');
 
-  const [{ data: cars }, { data: meetings }, { data: recLists }, { data: auctions }, { data: orders }, { data: myCalls }] = await Promise.all([
+  const [{ data: cars }, { data: meetings }, { data: recLists }, { data: auctions }, { data: orders }, { data: broadcastSub }] = await Promise.all([
     supabase.from('cars').select('*, car_stages(*), image_url').eq('client_id', user.id).order('created_at', { ascending: false }),
     supabase.from('meetings').select('*').eq('client_id', user.id).eq('status', 'scheduled').order('scheduled_at'),
     supabase.from('recommendation_lists').select('*, recommended_cars(id)').eq('client_id', user.id).order('created_at', { ascending: false }),
     supabase.from('auctions').select('*').eq('client_id', user.id).order('created_at', { ascending: false }),
     supabase.from('report_orders').select('*').eq('client_id', user.id).order('created_at', { ascending: false }),
-    supabase.from('call_bookings').select('id').eq('client_id', user.id).neq('status', 'cancelled').gte('starts_at', new Date().toISOString()).limit(1),
+    supabase.from('broadcast_subscribers').select('*').eq('client_id', user.id).maybeSingle(),
   ]);
+
+  const hasBroadcast = broadcastSub && broadcastSub.payment_status !== 'cancelled';
 
   const activeAuctions = (auctions || []).filter(a => ['submitted', 'under_review', 'pending_release', 'transfer10', 'redemption', 'transfer90', 'ownership_order', 'licensing'].includes(a.status));
   const auctionStatusLabel = {
@@ -442,17 +444,35 @@ export default async function Dashboard({ searchParams }) {
 
   return (
     <Shell active="home">
-      <WelcomeCallPopup hasBooking={!!myCalls?.length} />
+      <BroadcastPopup show={searchParams?.welcome === 'true'} hasSub={hasBroadcast} />
       <div className="page-title">שלום, {profile?.full_name || 'לקוח'}</div>
       <div className="page-sub">סקירה כללית של הרכבים והפעילות שלך</div>
 
-      <Link href="/book-call" className="card book-call-cta">
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>📞 קביעת שיחת אפיון</div>
-          <div className="muted" style={{ fontSize: 12.5 }}>בחר שעה נוחה — נציג שלנו יתקשר אליך (ראשון-חמישי, 12:30-14:00)</div>
+      {!hasBroadcast ? (
+        <Link href="/subscriptions" className="card book-call-cta">
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>📣 התחילו לקבל רכבים ישירות לטלפון שלכם!</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>
+              כל בוקר נשלח לכם את הרכבים הכי משתלמים במכרזים — ישירות לוואטסאפ.
+              <span style={{ color: 'var(--success)', fontWeight: 600, marginRight: 6 }}>מבצע השקה: ₪30/חודש במקום ₪50</span>
+              <span style={{ color: 'var(--muted-dim)', fontSize: 12 }}> · 30 ימי ניסיון חינם</span>
+            </div>
+          </div>
+          <span className="btn" style={{ pointerEvents: 'none' }}>התחילו עכשיו →</span>
+        </Link>
+      ) : (
+        <div className="card" style={{ background: 'var(--success-bg, rgba(34,197,94,0.08))', border: '1px solid rgba(34,197,94,0.3)', padding: '16px 24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: 15 }}>
+                ✅ {broadcastSub.payment_status === 'trial' ? 'תקופת ניסיון פעילה' : 'מנוי שידורי רכבים פעיל'}
+              </span>
+              <span style={{ color: 'var(--muted-dim)', fontSize: 13, marginRight: 8 }}>— רכבים מגיעים כל בוקר לוואטסאפ</span>
+            </div>
+            <Link href="/subscriptions" style={{ color: 'var(--primary)', fontSize: 13, textDecoration: 'underline' }}>ניהול מנוי →</Link>
+          </div>
         </div>
-        <span className="btn" style={{ pointerEvents: 'none' }}>לקביעת שיחה ←</span>
-      </Link>
+      )}
 
       <div className="grid cols-4" style={{ marginBottom: 4 }}>
         <div className="card stat">
