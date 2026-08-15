@@ -63,6 +63,17 @@ export default async function Shell({ children, active }) {
   const { supabase, user } = await requireUser();
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
   const isAdmin = profile?.role === 'admin';
+
+  // Client header stats
+  let reportCount = 0, paymentCount = 0;
+  if (!isAdmin) {
+    const [{ count: rc }, { count: pc }] = await Promise.all([
+      supabase.from('report_orders').select('*', { count: 'exact', head: true }).eq('client_id', user.id),
+      supabase.from('report_orders').select('*', { count: 'exact', head: true }).eq('client_id', user.id).eq('status', 'paid'),
+    ]);
+    reportCount = rc || 0;
+    paymentCount = pc || 0;
+  }
   const items = isAdmin ? ADMIN_NAV : CLIENT_NAV;
   const initials = (profile?.full_name || user.email || '?').charAt(0).toUpperCase();
 
@@ -78,6 +89,14 @@ export default async function Shell({ children, active }) {
             <Link href="/wallet" className="credits-chip" title="יתרת הקרדיטים שלך — לחץ לטעינה">
               <span className="credits-chip-icon">💳</span>
               <span className="credits-chip-amount">₪{Number(profile?.credits || 0).toLocaleString()}</span>
+            </Link>
+            <Link href="/reports" className="credits-chip" title="דוחות בדיקה שהזמנת — הקנייה מתבצעת בקרדיטים">
+              <span className="credits-chip-icon">📋</span>
+              <span className="credits-chip-amount">{reportCount} דוחות</span>
+            </Link>
+            <Link href="/reports" className="credits-chip" title="תשלומים ששולמו — הקנייה מתבצעת בקרדיטים">
+              <span className="credits-chip-icon">💰</span>
+              <span className="credits-chip-amount">{paymentCount} סליקה</span>
             </Link>
           )}
           <ShellClient type="settings" />
