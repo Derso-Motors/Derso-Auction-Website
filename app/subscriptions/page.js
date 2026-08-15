@@ -108,17 +108,15 @@ export default async function MyBroadcastPage({ searchParams }) {
               מצליב מול הקריטריונים המדויקים שלך (סוג רכב, שנתון, תקציב, ק"מ), ושולח לך
               ישירות לוואטסאפ רק רכבים שבאמת רלוונטיים. אתה מקבל את ההזדמנויות לפני כולם — בנוחות מלאה.
             </p>
-            <div style={{ fontSize: 34, fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>₪25<span style={{ fontSize: 15, color: 'var(--muted-dim)' }}> / לחודש</span></div>
-            <div className="muted" style={{ fontSize: 12.5, marginBottom: 18 }}>הוראת קבע בכרטיס אשראי · ביטול בכל עת · ללא התחייבות</div>
-            {broadcastPayUrl ? (
-              <PayPopup url={broadcastPayUrl} className="btn" style={{ display: 'inline-block', padding: '13px 42px', fontSize: 15 }}>
-                הצטרפות לשידור — ₪25/חודש
-              </PayPopup>
-            ) : (
-              <Link href="/messages" className="btn" style={{ display: 'inline-block', padding: '13px 42px', fontSize: 15 }}>
-                אני רוצה להצטרף — דברו איתי
-              </Link>
-            )}
+            <div style={{ marginBottom: 4 }}>
+              <span style={{ fontSize: 16, color: 'var(--muted-dim)', textDecoration: 'line-through' }}>₪50</span>
+              <span style={{ fontSize: 34, fontWeight: 700, color: 'var(--accent)', marginRight: 8 }}>₪30</span>
+              <span style={{ fontSize: 15, color: 'var(--muted-dim)' }}> / לחודש</span>
+            </div>
+            <div className="muted" style={{ fontSize: 12.5, marginBottom: 18 }}>מבצע השקה · 30 ימי ניסיון חינם · ביטול בכל עת</div>
+            <a href="https://mrng.to/3Y2t6W584l" target="_blank" rel="noopener noreferrer" className="btn" style={{ display: 'inline-block', padding: '13px 42px', fontSize: 15 }}>
+              התחלת 30 ימי ניסיון חינם — ₪30/חודש
+            </a>
           </div>
 
           <div className="grid cols-3">
