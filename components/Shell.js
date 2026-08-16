@@ -86,16 +86,9 @@ export default async function Shell({ children, active }) {
         <div className="topbar-brand">דרסו · אזור אישי</div>
         <div className="topbar-left">
           {!isAdmin && (
-            <Link href="/wallet" className="credits-chip" title="יתרת הקרדיטים שלך — לחץ לטעינה">
-              <span className="credits-chip-icon">💳</span>
-              <span className="credits-chip-amount">₪{Number(profile?.credits || 0).toLocaleString()}</span>
-            </Link>
-            <Link href="/reports" className="credits-chip" title="דוחות בדיקה שהזמנת — הקנייה מתבצעת בקרדיטים">
-              <span className="credits-chip-icon">📋</span>
+            <Link href="/wallet" className="credits-chip" title="הארנק שלי — הקנייה מתבצעת בקרדיטים">
               <span className="credits-chip-amount">{reportCount} דוחות</span>
-            </Link>
-            <Link href="/reports" className="credits-chip" title="תשלומים ששולמו — הקנייה מתבצעת בקרדיטים">
-              <span className="credits-chip-icon">💰</span>
+              <span style={{ margin: '0 4px', opacity: 0.4 }}>|</span>
               <span className="credits-chip-amount">{paymentCount} סליקה</span>
             </Link>
           )}
