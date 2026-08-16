@@ -86,7 +86,7 @@ export default async function Shell({ children, active }) {
         <div className="topbar-brand">דרסו · אזור אישי</div>
         <div className="topbar-left">
           {!isAdmin && (
-            <Link href="/wallet" className="credits-chip" title="הארנק שלי — הקנייה מתבצעת בקרדיטים">
+            <Link href="/pricing" className="credits-chip" title="הארנק שלי — הקנייה מתבצעת בקרדיטים">
               <span className="credits-chip-amount">{reportCount} דוחות</span>
               <span style={{ margin: '0 4px', opacity: 0.4 }}>|</span>
               <span className="credits-chip-amount">{paymentCount} סליקה</span>
