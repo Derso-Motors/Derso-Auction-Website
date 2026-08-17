@@ -28,7 +28,7 @@ export async function middleware(request) {
   // nadav.derso.net הוא אתר נדב הציבורי — אין עליו התחברות; כל נתיב פתוח.
   const host = request.headers.get('host') || '';
   const isNadavHost = host === 'nadav.derso.net';
-  const isPublic = isNadavHost || path.startsWith('/login') || path.startsWith('/r/') || path.startsWith('/call/') || path.startsWith('/auth/') || path.startsWith('/_next') || path.startsWith('/favicon') || path.startsWith('/terms') || path.startsWith('/privacy') || path.startsWith('/disclaimer') || path.startsWith('/nadav') || path.startsWith('/api/') || path === '/manifest.webmanifest' || path.startsWith('/icon-') || path === '/apple-touch-icon.png' || path === '/robots.txt' || path === '/sitemap.xml' || path === '/';
+  const isPublic = isNadavHost || path.startsWith('/login') || path.startsWith('/r/') || path.startsWith('/call/') || path.startsWith('/auth/') || path.startsWith('/_next') || path.startsWith('/favicon') || path.startsWith('/terms') || path.startsWith('/privacy') || path.startsWith('/disclaimer') || path.startsWith('/nadav') || path.startsWith('/api/') || path.startsWith('/social/') || path === '/manifest.webmanifest' || path.startsWith('/icon-') || path === '/apple-touch-icon.png' || path === '/robots.txt' || path === '/sitemap.xml' || path === '/';
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
