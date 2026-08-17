@@ -1,6 +1,8 @@
 import { ImageResponse } from 'next/og';
 
-export const runtime = 'edge';
+// Node runtime (not edge): on this deployment the edge runtime streamed
+// empty PNG bodies; next/og works in the Node lambda as well.
+export const dynamic = 'force-dynamic';
 
 // Branded 1080x1080 post card (dark + gold, SBX style). Query params:
 // kind=deal|client_win|weekly_summary|knowledge|topic|news, title, year, km, list, sold, discount,
