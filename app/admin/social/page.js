@@ -105,16 +105,16 @@ export default async function SocialAdminPage({ searchParams }) {
     supabase.from('social_posts').select('*').order('created_at', { ascending: false }).limit(40),
     supabase.from('broadcast_settings').select('social_auto_publish').eq('id', 1).single(),
   ]);
-  const metaReady = !!(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN);
+  const socialyncReady = !!process.env.SOCIALYNC_API_KEY;
 
   return (
     <Shell active="social">
       <div className="page-title">📣 שיווק אוטומטי</div>
-      <div className="page-sub">פוסטים שנוצרים אוטומטית מתוצאות אמת — מכרזים, זכיות לקוחות וגיליון התכנים — ומתפרסמים לפייסבוק ואינסטגרם</div>
+      <div className="page-sub">פוסטים שנוצרים אוטומטית מתוצאות אמת — מכרזים, זכיות לקוחות וגיליון התכנים — ומתפרסמים דרך Socialync לכל הרשתות</div>
 
       {searchParams?.err && <div className="error-msg">{searchParams.err}</div>}
       {searchParams?.ok && !searchParams?.err && <div className="info-msg">{searchParams.ok}</div>}
-      {!metaReady && <div className="error-msg">⚠️ חסרים META_PAGE_ID / META_PAGE_ACCESS_TOKEN ב-Vercel — אפשר ליצור ולערוך טיוטות, אבל פרסום לא יעבוד עד שנגדיר אותם.</div>}
+      {!socialyncReady && <div className="error-msg">⚠️ חסר SOCIALYNC_API_KEY ב-Vercel — אפשר ליצור ולערוך טיוטות, אבל פרסום לא יעבוד עד שנגדיר אותו.</div>}
 
       <div className="card" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <form action={generateNow}><SubmitButton className="btn">✨ צור פוסטים עכשיו מהדאטה</SubmitButton></form>
