@@ -8,9 +8,9 @@ export const runtime = 'edge';
 let fontCache = null;
 async function heeboFont() {
   if (fontCache) return fontCache;
-  const css = await fetch('https://fonts.googleapis.com/css2?family=Heebo:wght@700&display=swap', {
-    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/110.0' },
-  }).then((r) => r.text());
+  // No User-Agent header: Google Fonts then serves a single TTF (all unicode
+  // ranges incl. Hebrew), which is what satori/ImageResponse requires.
+  const css = await fetch('https://fonts.googleapis.com/css2?family=Heebo:wght@700&display=swap').then((r) => r.text());
   const url = css.match(/src: url\((.+?)\) format\('(?:truetype|opentype)'\)/)?.[1];
   fontCache = await fetch(url).then((r) => r.arrayBuffer());
   return fontCache;
