@@ -42,6 +42,7 @@ async function addWinByLink(formData) {
     case_number: car.license_plate || null,
     max_bid: Number(formData.get('final_price')) || Number(String(car.list_price).replace(/[^\d]/g, '')) || 0,
     final_price: Number(formData.get('final_price')) || Number(String(car.list_price).replace(/[^\d]/g, '')) || null,
+    list_price: Number(String(car.list_price).replace(/[^\d]/g, '')) || null,
     closing_date: auctionDate,
     status: 'won',
     auction_link: link,
