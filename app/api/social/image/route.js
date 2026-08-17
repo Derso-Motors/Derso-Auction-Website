@@ -8,11 +8,16 @@ export const runtime = 'edge';
 let fontCache = null;
 async function heeboFont() {
   if (fontCache) return fontCache;
-  // No User-Agent header: Google Fonts then serves a single TTF (all unicode
-  // ranges incl. Hebrew), which is what satori/ImageResponse requires.
-  const css = await fetch('https://fonts.googleapis.com/css2?family=Heebo:wght@700&display=swap').then((r) => r.text());
-  const url = css.match(/src: url\((.+?)\) format\('(?:truetype|opentype)'\)/)?.[1];
-  fontCache = await fetch(url).then((r) => r.arrayBuffer());
+  // Pinned TTF (satori needs ttf/otf, not woff2; this file covers Hebrew+Latin).
+  const PINNED = 'https://fonts.gstatic.com/s/heebo/v28/NGSpv5_NC0k9P_v6ZUCbLRAHxK1Ebiuccg.ttf';
+  let buf = await fetch(PINNED).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
+  if (!buf) {
+    // Fallback: parse the CSS (no UA header → Google serves TTF)
+    const css = await fetch('https://fonts.googleapis.com/css2?family=Heebo:wght@700&display=swap').then((r) => r.text());
+    const url = css.match(/src: url\((.+?)\) format\('(?:truetype|opentype)'\)/)?.[1];
+    buf = await fetch(url).then((r) => r.arrayBuffer());
+  }
+  fontCache = buf;
   return fontCache;
 }
 
