@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { loadAuctionDeals, loadContentSheet, loadClientWins, createDraft, publishPost } from '../../../../lib/social';
+import { scanTrendingTopics } from '../../../../lib/social-brain';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -48,6 +49,16 @@ export async function GET(req) {
       if (post) created.push(post.id);
     }
   } catch (e) { console.error('sheet drafts:', e.message); }
+
+  // 4. Trending topics monitoring (יוקר מחיה, בטיחות בדרכים, כלכלת רכב, עולם הנהיגה)
+  try {
+    const trends = await scanTrendingTopics(supabase);
+    const week = new Date().toISOString().slice(0, 10).slice(0, 7) + '-w' + Math.ceil(new Date().getDate() / 7);
+    for (const t of trends) {
+      const post = await createDraft(supabase, 'topic', t, `topic:${t.area}:${t.topic}:${week}`);
+      if (post) { created.push(post.id); break; } // one trending-topic post per tick
+    }
+  } catch (e) { console.error('topic drafts:', e.message); }
 
   // Auto-publish if enabled
   let published = [];
