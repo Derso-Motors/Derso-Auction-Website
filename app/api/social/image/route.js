@@ -43,7 +43,7 @@ export async function GET(req) {
           ) : (
             <>
               <div style={{ display: 'flex', fontSize: 30, color: '#bbb' }}>
-                {kind === 'client_win' ? '🏆 זכייה של לקוח דרסו' : '🔥 נמכר במכרז'}
+                {kind === 'client_win' ? 'זכייה של לקוח דרסו' : 'נמכר במכרז'}
               </div>
               <div style={{ display: 'flex', fontSize: 54, maxWidth: 920 }}>{q.title || q.car_title || ''}</div>
               <div style={{ display: 'flex', gap: 30, fontSize: 30, color: '#999' }}>
@@ -65,7 +65,7 @@ export async function GET(req) {
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-          <div style={{ display: 'flex', fontSize: 28, color: GOLD }}>📡 הצטרפו לשידור — רכבים ישירות לוואטסאפ</div>
+          <div style={{ display: 'flex', fontSize: 28, color: GOLD }}>הצטרפו לשידור — רכבים ישירות לוואטסאפ</div>
           <div style={{ display: 'flex', fontSize: 26, color: '#ccc' }}>auctions.derso.net</div>
         </div>
       </div>
