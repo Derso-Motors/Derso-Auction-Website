@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { heeboFontData } from '../../../../lib/heebo-font';
 
 // Node runtime (not edge): on this deployment the edge runtime streamed
 // empty PNG bodies; next/og works in the Node lambda as well.
@@ -7,28 +8,13 @@ export const dynamic = 'force-dynamic';
 // Branded 1080x1080 post card (dark + gold, SBX style). Query params:
 // kind=deal|client_win|weekly_summary|knowledge|topic|news, title, year, km, list, sold, discount,
 // topic, text, facts, bg (optional background image URL, e.g. an AI-generated one).
-let fontCache = null;
-async function heeboFont() {
-  if (fontCache) return fontCache;
-  // Pinned TTF (satori needs ttf/otf, not woff2; this file covers Hebrew+Latin).
-  const PINNED = 'https://fonts.gstatic.com/s/heebo/v28/NGSpv5_NC0k9P_v6ZUCbLRAHxK1Ebiuccg.ttf';
-  let buf = await fetch(PINNED).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
-  if (!buf) {
-    // Fallback: parse the CSS (no UA header → Google serves TTF)
-    const css = await fetch('https://fonts.googleapis.com/css2?family=Heebo:wght@700&display=swap').then((r) => r.text());
-    const url = css.match(/src: url\((.+?)\) format\('(?:truetype|opentype)'\)/)?.[1];
-    buf = await fetch(url).then((r) => r.arrayBuffer());
-  }
-  fontCache = buf;
-  return fontCache;
-}
 
 const GOLD = '#d4af37';
 const nis = (n) => '₪' + Number(n || 0).toLocaleString('en-US');
 
 export async function GET(req) {
   const q = Object.fromEntries(new URL(req.url).searchParams);
-  const font = await heeboFont();
+  const font = heeboFontData();
   const kind = q.kind || 'deal';
   const discount = q.discount || (q.list && q.sold ? Math.round((1 - Number(q.sold) / Number(q.list)) * 100) : '');
 
