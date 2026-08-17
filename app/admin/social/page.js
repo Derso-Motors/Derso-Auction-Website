@@ -70,6 +70,29 @@ async function aiImage(formData) {
   }
 }
 
+async function chromeImage(formData) {
+  'use server';
+  const { supabase } = await requireAdmin();
+  const { data: post } = await supabase.from('social_posts').select('*').eq('id', formData.get('id')).single();
+  try {
+    const { renderPostImage } = await import('../../../lib/renderer');
+    const { carPhotoDataUrl } = await import('../../../lib/photos');
+    const { uploadToStorage } = await import('../../../lib/ai-image');
+    let photo = null;
+    if (['deal', 'client_win'].includes(post.kind)) {
+      photo = await carPhotoDataUrl(post.payload?.title || post.payload?.car_title);
+    }
+    const pngBuf = await renderPostImage(post.kind, post.payload || {}, photo);
+    const dataUrl = `data:image/png;base64,${pngBuf.toString('base64')}`;
+    const url = await uploadToStorage(dataUrl, `post-${post.id}`);
+    await supabase.from('social_posts').update({ image_url: url, image_mode: 'chrome' }).eq('id', post.id);
+    revalidatePath(PAGE);
+    go('תמונת Chrome איכותית נוצרה 🎨');
+  } catch (e) {
+    go('יצירת התמונה נכשלה: ' + e.message, true);
+  }
+}
+
 async function toggleAuto() {
   'use server';
   const { supabase } = await requireAdmin();
@@ -207,7 +230,8 @@ export default async function SocialAdminPage({ searchParams }) {
                   <form action={setStatus}><input type="hidden" name="id" value={p.id} /><input type="hidden" name="status" value="approved" /><SubmitButton className="btn secondary" style={{ padding: '7px 14px', fontSize: 13 }}>✓ אשר לפרסום הבא</SubmitButton></form>
                 )}
                 <form action={regenerateCaption}><input type="hidden" name="id" value={p.id} /><SubmitButton className="btn secondary" style={{ padding: '7px 14px', fontSize: 13 }}>✨ קפשן חדש</SubmitButton></form>
-                <form action={aiImage}><input type="hidden" name="id" value={p.id} /><SubmitButton className="btn secondary" style={{ padding: '7px 14px', fontSize: 13 }}>🎨 תמונת AI ייחודית</SubmitButton></form>
+                <form action={aiImage}><input type="hidden" name="id" value={p.id} /><SubmitButton className="btn secondary" style={{ padding: '7px 14px', fontSize: 13 }}>🎨 תמונת AI</SubmitButton></form>
+                <form action={chromeImage}><input type="hidden" name="id" value={p.id} /><SubmitButton className="btn secondary" style={{ padding: '7px 14px', fontSize: 13 }}>🖼️ תמונת Chrome HD</SubmitButton></form>
                 {p.status !== 'posted' && (
                   <form action={deletePost}><input type="hidden" name="id" value={p.id} /><DeleteButton title="מחיקת הפוסט" confirmText="למחוק את הפוסט הזה?" /></form>
                 )}
