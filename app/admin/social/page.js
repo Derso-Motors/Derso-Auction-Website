@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { publishPost, generateCaption } from '../../../lib/social';
 import { generateAiImage, uploadToStorage, imagePromptForPost } from '../../../lib/ai-image';
+import { checkQuota } from '../../../lib/meta';
+import { TOPIC_AREAS } from '../../../lib/social-guidelines';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -96,25 +98,76 @@ async function deletePost(formData) {
 
 /* ── Page ── */
 
-const KIND_LABEL = { deal: '🔥 עסקה מהמכרזים', client_win: '🏆 זכייה של לקוח', weekly_summary: '📊 סיכום שבועי', sheet: '📄 מגיליון התכנים', news: '📰 חדשות', knowledge: '💡 ידע' };
+const KIND_LABEL = { deal: '🔥 עסקה מהמכרזים', client_win: '🏆 זכייה של לקוח', weekly_summary: '📊 סיכום שבועי', sheet: '📄 מגיליון התכנים', news: '📰 חדשות', knowledge: '💡 ידע', topic: '🔎 נושא חם מהניטור' };
 const STATUS_BADGE = { draft: ['טיוטה', ''], approved: ['מאושר לפרסום', 'paid'], posted: ['פורסם ✓', 'paid'], failed: ['נכשל', 'err'], rejected: ['נדחה', ''] };
 
 export default async function SocialAdminPage({ searchParams }) {
   const { supabase } = await requireAdmin();
-  const [{ data: posts }, { data: settings }] = await Promise.all([
+  const [{ data: posts }, { data: settings }, { data: trends }, { data: insights }] = await Promise.all([
     supabase.from('social_posts').select('*').order('created_at', { ascending: false }).limit(40),
     supabase.from('broadcast_settings').select('social_auto_publish').eq('id', 1).single(),
+    supabase.from('social_trends').select('*').order('created_at', { ascending: false }).limit(8),
+    supabase.from('social_insights').select('likes, comments, shares, social_posts(caption, kind)').order('likes', { ascending: false }).limit(3),
   ]);
   const socialyncReady = !!process.env.SOCIALYNC_API_KEY;
+  let quota = null;
+  if (socialyncReady) { try { quota = await checkQuota(); } catch { /* offline */ } }
+
+  const stat = (label, val, sub) => (
+    <div className="card" style={{ flex: 1, minWidth: 150, textAlign: 'center', margin: 0 }}>
+      <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--gold, #d4af37)' }}>{val}</div>
+      <div style={{ fontSize: 13, fontWeight: 600 }}>{label}</div>
+      {sub && <div className="muted" style={{ fontSize: 11 }}>{sub}</div>}
+    </div>
+  );
+  const byStatus = (s) => (posts || []).filter((p) => p.status === s).length;
 
   return (
     <Shell active="social">
-      <div className="page-title">📣 שיווק אוטומטי</div>
-      <div className="page-sub">פוסטים שנוצרים אוטומטית מתוצאות אמת — מכרזים, זכיות לקוחות וגיליון התכנים — ומתפרסמים דרך Socialync לכל הרשתות</div>
+      <div className="page-title">📣 שיווק אוטומטי — DERSO רכבים</div>
+      <div className="page-sub">פוסטים שנוצרים אוטומטית מתוצאות אמת + ניטור נושאים חמים (יוקר מחיה, בטיחות, כלכלת רכב, עולם הנהיגה) — ומתפרסמים דרך Socialync</div>
 
       {searchParams?.err && <div className="error-msg">{searchParams.err}</div>}
       {searchParams?.ok && !searchParams?.err && <div className="info-msg">{searchParams.ok}</div>}
       {!socialyncReady && <div className="error-msg">⚠️ חסר SOCIALYNC_API_KEY ב-Vercel — אפשר ליצור ולערוך טיוטות, אבל פרסום לא יעבוד עד שנגדיר אותו.</div>}
+
+      {/* ── דשבורד ── */}
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
+        {stat('פורסמו', byStatus('posted'))}
+        {stat('טיוטות', byStatus('draft'))}
+        {stat('מאושרים', byStatus('approved'))}
+        {stat('נכשלו', byStatus('failed'))}
+        {quota?.remainingPosts != null && stat('נותרו החודש', quota.remainingPosts, quota.plan ? `תוכנית ${quota.plan}` : 'Socialync')}
+      </div>
+
+      {(trends || []).length > 0 && (
+        <div className="card">
+          <b>🔎 נושאים חמים מהניטור</b>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+            {trends.map((t) => (
+              <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', fontSize: 13 }}>
+                <span className="badge">{TOPIC_AREAS.find((a) => a.key === t.area)?.label || t.area}</span>
+                <b>{t.topic}</b>
+                <span className="muted">{t.pain_point}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(insights || []).length > 0 && (
+        <div className="card">
+          <b>🏆 הפוסטים המצליחים (מזינים את הלמידה)</b>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+            {insights.map((r, i) => (
+              <div key={i} style={{ fontSize: 13 }}>
+                <span className="badge paid">❤️ {r.likes} · 💬 {r.comments} · 🔁 {r.shares}</span>{' '}
+                <span className="muted">{(r.social_posts?.caption || '').slice(0, 90)}…</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <form action={generateNow}><SubmitButton className="btn">✨ צור פוסטים עכשיו מהדאטה</SubmitButton></form>

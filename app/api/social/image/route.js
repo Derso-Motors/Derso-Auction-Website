@@ -3,8 +3,8 @@ import { ImageResponse } from 'next/og';
 export const runtime = 'edge';
 
 // Branded 1080x1080 post card (dark + gold, SBX style). Query params:
-// kind=deal|client_win|weekly_summary|knowledge, title, year, km, list, sold, discount,
-// topic, text, bg (optional background image URL, e.g. an AI-generated one).
+// kind=deal|client_win|weekly_summary|knowledge|topic|news, title, year, km, list, sold, discount,
+// topic, text, facts, bg (optional background image URL, e.g. an AI-generated one).
 let fontCache = null;
 async function heeboFont() {
   if (fontCache) return fontCache;
@@ -35,14 +35,17 @@ export async function GET(req) {
       }}>
         <div style={{ position: 'absolute', inset: 24, border: `2px solid ${GOLD}`, borderRadius: 24, display: 'flex' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', fontSize: 40, color: GOLD, letterSpacing: 4 }}>DERSO</div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', fontSize: 40, color: GOLD, letterSpacing: 4 }}>DERSO</div>
+            <div style={{ display: 'flex', fontSize: 20, color: '#bbb', letterSpacing: 8 }}>רכבים</div>
+          </div>
           <div style={{ display: 'flex', fontSize: 26, color: '#bbb' }}>עדכוני מכרזים</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center', alignItems: 'center', textAlign: 'center', gap: 24 }}>
-          {kind === 'weekly_summary' || kind === 'knowledge' ? (
+          {kind === 'weekly_summary' || kind === 'knowledge' || kind === 'topic' || kind === 'news' ? (
             <>
               <div style={{ display: 'flex', fontSize: 58, color: GOLD, maxWidth: 900 }}>{q.topic || 'סיכום שבועי'}</div>
-              <div style={{ display: 'flex', fontSize: 38, color: '#eee', maxWidth: 880, lineHeight: 1.5 }}>{q.text || ''}</div>
+              <div style={{ display: 'flex', fontSize: 38, color: '#eee', maxWidth: 880, lineHeight: 1.5 }}>{q.text || q.facts || ''}</div>
             </>
           ) : (
             <>
