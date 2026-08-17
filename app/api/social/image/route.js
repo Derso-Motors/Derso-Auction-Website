@@ -22,8 +22,10 @@ export async function GET(req) {
     (
       <div style={{
         width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-        background: q.bg ? undefined : 'linear-gradient(160deg, #1a1408 0%, #0a0a0a 45%, #000 100%)',
-        backgroundImage: q.bg ? `url(${q.bg})` : undefined, backgroundSize: '1080px 1080px',
+        // satori crashes on style keys with undefined values — spread only what applies
+        ...(q.bg
+          ? { backgroundImage: `url(${q.bg})`, backgroundSize: '1080px 1080px' }
+          : { background: 'linear-gradient(160deg, #1a1408 0%, #0a0a0a 45%, #000 100%)' }),
         color: '#fff', fontFamily: 'Heebo', padding: 64, position: 'relative',
       }}>
         <div style={{ position: 'absolute', inset: 24, border: `2px solid ${GOLD}`, borderRadius: 24, display: 'flex' }} />
