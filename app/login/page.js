@@ -17,7 +17,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(false);
-  const [agree, setAgree] = useState(false);
+  // Separate, explicit consent per legal document (required by legal).
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeDisclaimer, setAgreeDisclaimer] = useState(false);
 
   // Prefill a remembered email
   useEffect(() => {
@@ -78,10 +81,19 @@ export default function LoginPage() {
         router.refresh();
       } else {
         if (password.length < 8) { setError('סיסמה חייבת להכיל לפחות 8 תווים'); return; }
-        if (!agree) { setError('כדי להירשם יש לאשר את תנאי השימוש, מדיניות הפרטיות והסרת האחריות'); return; }
+        if (!agreeTerms || !agreePrivacy || !agreeDisclaimer) {
+          setError('כדי להירשם יש לאשר בנפרד את תנאי השימוש, מדיניות הפרטיות והסרת האחריות');
+          return;
+        }
+        const now = new Date().toISOString();
         const { error } = await supabase.auth.signUp({
           email, password,
-          options: { data: { full_name: fullName, phone, accepted_terms: true, accepted_terms_at: new Date().toISOString() } },
+          options: { data: {
+            full_name: fullName, phone,
+            accepted_terms: true, accepted_terms_at: now,
+            accepted_privacy: true, accepted_privacy_at: now,
+            accepted_disclaimer: true, accepted_disclaimer_at: now,
+          } },
         });
         if (error) { setError('שגיאה בהרשמה. נסה שוב מאוחר יותר.'); return; }
         // WhatsApp welcome + verification note (best effort, non-blocking)
@@ -186,13 +198,23 @@ export default function LoginPage() {
               </div>
             )}
             {mode === 'signup' && (
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--muted)', cursor: 'pointer', margin: '2px 0 8px', lineHeight: 1.5 }}>
-                <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} required style={{ width: 'auto', marginTop: 3 }} />
-                <span>
-                  קראתי ואני מסכים/ה ל<a href="/terms" target="_blank" style={{ color: 'var(--accent)' }}>תנאי השימוש</a>, ל<a href="/privacy" target="_blank" style={{ color: 'var(--accent)' }}>מדיניות הפרטיות</a> ול<a href="/disclaimer" target="_blank" style={{ color: 'var(--accent)' }}>הסרת האחריות</a>,
-                  ובכלל זה: זכות הפדיון של החייב וסעד בלעדי של השבת דמי השירות בביטול עסקה, מכר רכבים במצבם (AS-IS) ותקרת האחריות.
-                </span>
-              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '2px 0 8px' }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--muted)', cursor: 'pointer', lineHeight: 1.5 }}>
+                  <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} required style={{ width: 'auto', marginTop: 3 }} />
+                  <span>קראתי ואני מסכים/ה ל<a href="/terms" target="_blank" style={{ color: 'var(--accent)' }}>תנאי השימוש</a>.</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--muted)', cursor: 'pointer', lineHeight: 1.5 }}>
+                  <input type="checkbox" checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)} required style={{ width: 'auto', marginTop: 3 }} />
+                  <span>קראתי ואני מסכים/ה ל<a href="/privacy" target="_blank" style={{ color: 'var(--accent)' }}>מדיניות הפרטיות</a>.</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--muted)', cursor: 'pointer', lineHeight: 1.5 }}>
+                  <input type="checkbox" checked={agreeDisclaimer} onChange={(e) => setAgreeDisclaimer(e.target.checked)} required style={{ width: 'auto', marginTop: 3 }} />
+                  <span>
+                    קראתי ואני מסכים/ה ל<a href="/disclaimer" target="_blank" style={{ color: 'var(--accent)' }}>הסרת האחריות</a>,
+                    ובכלל זה: זכות הפדיון של החייב וסעד בלעדי של השבת דמי השירות בביטול עסקה, מכר רכבים במצבם (AS-IS) ותקרת האחריות.
+                  </span>
+                </label>
+              </div>
             )}
             <button className="btn" style={{ width: '100%', marginTop: 6 }} disabled={loading}>
               {loading ? 'רגע...' : mode === 'login' ? 'התחברות' : mode === 'forgot' ? 'שליחת קישור לאיפוס' : 'הרשמה'}
